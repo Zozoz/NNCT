@@ -198,6 +198,7 @@ def train_run(_):
                 if epoch - best_val_epoch > classifier.config.early_stopping:
                     print 'Normal early stop!'
                     break
+            print 'Best acc = {}'.format(best_accuracy)
     print 'Training complete!'
 
 
