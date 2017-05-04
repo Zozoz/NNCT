@@ -33,7 +33,7 @@ class CNN_Sentence(object):
 
     def add_placeholder(self):
         self.x = tf.placeholder(tf.int32, [None, self.config.max_sentence_len], 'input_data')
-        self.y = tf.placeholder(tf.int32, [None, self.config.n_class], 'output_data')
+        self.y = tf.placeholder(tf.float32, [None, self.config.n_class], 'output_data')
         self.sen_len = tf.placeholder(tf.int32, [None], 'sentence_len')
         self.keep_prob1 = tf.placeholder(tf.float32)
         self.keep_prob2 = tf.placeholder(tf.float32)

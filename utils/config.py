@@ -26,6 +26,7 @@ tf.app.flags.DEFINE_string('t2', 'last', 'type of hidden output')
 tf.app.flags.DEFINE_integer('n_layer', 3, 'number of stacked rnn')
 tf.app.flags.DEFINE_string('pre_trained', 'yes', 'whether has pre-trained embedding')
 tf.app.flags.DEFINE_integer('early_stopping', 5, 'the number of early stopping epoch')
+tf.app.flags.DEFINE_integer('decay_steps', 10000, 'decay steps of learning rate')
 
 
 tf.app.flags.DEFINE_string('train_file', 'data/restaurant/rest_2014_lstm_train_new.txt', 'training file')
