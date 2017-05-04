@@ -80,7 +80,7 @@ class CNN_Sentence(object):
                              self.config.l2_reg, self.config.n_class)
 
     def add_loss(self, scores):
-        loss = tf.nn.softmax_cross_entropy_with_logits(scores, self.y)
+        loss = tf.nn.softmax_cross_entropy_with_logits(labels=scores, logits=self.y)
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         loss = tf.reduce_mean(loss) + sum(reg_loss)
         return loss
