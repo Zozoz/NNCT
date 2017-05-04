@@ -29,7 +29,7 @@ tf.app.flags.DEFINE_integer('early_stopping', 5, 'the number of early stopping e
 
 
 tf.app.flags.DEFINE_string('train_file', 'data/restaurant/rest_2014_lstm_train_new.txt', 'training file')
-tf.app.flags.DEFINE_string('validate_file', 'data/restaurant/rest_2014_lstm_test_new.txt', 'validating file')
+tf.app.flags.DEFINE_string('val_file', 'data/restaurant/rest_2014_lstm_test_new.txt', 'validating file')
 tf.app.flags.DEFINE_string('test_file', 'data/restaurant/rest_2014_lstm_test_new.txt', 'testing file')
 tf.app.flags.DEFINE_string('train_file_r', 'data/restaurant/rest_2014_lstm_train_new.txt', 'training file')
 tf.app.flags.DEFINE_string('val_file_r', 'data/restaurant/rest_2014_lstm_test_new.txt', 'validating file')
