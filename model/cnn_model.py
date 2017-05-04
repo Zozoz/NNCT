@@ -30,6 +30,8 @@ class CNN_Sentence(object):
         self.loss = self.add_loss(self.logits)
         self.accuracy, self.accuracy_num = self.add_accuracy(self.logits)
         self.train_op = self.add_train_op(self.loss)
+        self.cnn_layer = cnn_layer
+        self.softmax_layer = softmax_layer
 
     def add_placeholder(self):
         self.x = tf.placeholder(tf.int32, [None, self.config.max_sentence_len], 'input_data')
@@ -41,7 +43,7 @@ class CNN_Sentence(object):
     def add_embedding(self):
         if self.config.pre_trained == 'yes':
             self.word2id, w2v = load_w2v(self.config.embedding_file, self.config.embedding_dim, True)
-            self.embedding = tf.Variable(w2v, dtype=tf.float32, name='word_embedding')
+            self.embedding = tf.constant(w2v, dtype=tf.float32, name='word_embedding')
         else:
             self.embedding = tf.Variable(tf.random_uniform([self.vocab_size, self.config.embedding_dim], -1.0, 1.0))
         inputs = tf.nn.embedding_lookup(self.embedding, self.x)
@@ -62,7 +64,7 @@ class CNN_Sentence(object):
         for i, filter_size in enumerate(self.filter_list):
             filter_shape = [filter_size, self.config.embedding_dim, 1, self.filter_num]
             # Convolution layer
-            conv = cnn_layer(inputs, filter_shape, [1, 1, 1, 1], 'VALID', self.config.random_base,
+            conv = self.cnn_layer(inputs, filter_shape, [1, 1, 1, 1], 'VALID', self.config.random_base,
                              self.config.l2_reg, tf.nn.relu, str(i))
             # Pooling layer
             pooling = tf.nn.max_pool(conv, ksize=[1, self.config.max_sentence_len - filter_size + 1, 1, 1],
@@ -75,7 +77,7 @@ class CNN_Sentence(object):
 
     def add_softmax_layer(self, inputs):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob2)
-        return softmax_layer(inputs, self.filter_num*len(self.filter_list),
+        return self.softmax_layer(inputs, self.filter_num*len(self.filter_list),
                              self.config.random_base, self.config.keep_prob2,
                              self.config.l2_reg, self.config.n_class)
 
@@ -135,7 +137,7 @@ class CNN_Sentence(object):
         res_list = []
         len_list = []
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
-            if data_y:
+            if data_y is not None:
                 feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], data_y[indices])
             else:
                 feed_dict = self.create_feed_dict(data_x[indices], data_len[indices])
