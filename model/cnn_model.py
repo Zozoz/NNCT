@@ -180,7 +180,7 @@ def train_run(_):
             for epoch in range(classifier.config.n_iter):
                 print '=' * 20 + 'Epoch ', epoch, '=' * 20
                 loss, acc = classifier.run_epoch(sess, train_x, train_sen_len, train_y)
-                print 'Mean loss = {}, mean acc = {}'.format(loss, acc)
+                print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
                 print '=' * 50
                 val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_y)
                 print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
@@ -195,7 +195,7 @@ def train_run(_):
                     break
     print 'Training complete!'
 
-    
+
 if __name__ == '__main__':
     tf.app.run(train_run)
 
