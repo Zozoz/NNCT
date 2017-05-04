@@ -11,7 +11,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 
 from utils.config import *
 from utils.data_helper import load_w2v, load_inputs_sentence, batch_index
-# from newbie_nn.nn_layer import cnn_layer, softmax_layer
+from newbie_nn.nn_layer import cnn_layer, softmax_layer
 
 
 class CNN_Sentence(object):
@@ -56,55 +56,14 @@ class CNN_Sentence(object):
         self.val_x, self.val_sen_len, self.val_y = load_inputs_sentence(self.config.val_file, self.word2id,
                                                                         self.config.max_sentence_len)
 
-    def cnn_layer(self, inputs, filter_shape, strides, padding, active_func=None, scope_name="conv"):
-        w = tf.get_variable(
-            name='conv' + scope_name,
-            shape=filter_shape,
-            # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
-            initializer=tf.random_uniform_initializer(-self.config.random_base, self.config.random_base),
-            regularizer=tf.contrib.layers.l2_regularizer(self.config.l2_reg)
-        )
-        b = tf.get_variable(
-            name='conv_b' + scope_name,
-            shape=[filter_shape[-1]],
-            # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
-            initializer=tf.random_uniform_initializer(-self.config.random_base, self.config.random_base),
-            regularizer=tf.contrib.layers.l2_regularizer(self.config.l2_reg)
-        )
-        conv = tf.nn.conv2d(inputs, w, strides, padding)
-        h = tf.nn.bias_add(conv, b)
-        if active_func is None:
-            active_func = tf.nn.relu
-        return active_func(h)
-
-    def softmax_layer(self, inputs, n_hidden, scope_name='1'):
-        w = tf.get_variable(
-            name='softmax_w' + scope_name,
-            shape=[n_hidden, self.config.n_class],
-            initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + self.config.n_class))),
-            # initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_class)), np.sqrt(6.0 / (n_hidden + n_class))),
-            regularizer=tf.contrib.layers.l2_regularizer(self.config.l2_reg)
-        )
-        b = tf.get_variable(
-            name='softmax_b' + scope_name,
-            shape=[self.config.n_class],
-            initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (self.config.n_class))),
-            # initializer=tf.random_uniform_initializer(-random_base, random_base),
-            regularizer=tf.contrib.layers.l2_regularizer(self.config.l2_reg)
-        )
-        with tf.name_scope('softmax'):
-            outputs = tf.nn.dropout(inputs, keep_prob=self.config.keep_prob2)
-            scores = tf.nn.xw_plus_b(outputs, w, b, 'scores')
-        return scores
-
     def add_cnn_layer(self, inputs):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         pooling_outputs = []
         for i, filter_size in enumerate(self.filter_list):
             filter_shape = [filter_size, self.config.embedding_dim, 1, self.filter_num]
             # Convolution layer
-            conv = self.cnn_layer(inputs, filter_shape, [1, 1, 1, 1], 'VALID', tf.nn.relu, str(i))
+            conv = cnn_layer(inputs, filter_shape, [1, 1, 1, 1], 'VALID', self.config.random_base,
+                             self.config.l2_reg, tf.nn.relu, str(i))
             # Pooling layer
             pooling = tf.nn.max_pool(conv, ksize=[1, self.config.max_sentence_len - filter_size + 1, 1, 1],
                                      strides=[1, 1, 1, 1], padding='VALID', name='pooling')
@@ -116,10 +75,11 @@ class CNN_Sentence(object):
 
     def add_softmax_layer(self, inputs):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob2)
-        return self.softmax_layer(inputs, self.filter_num*len(self.filter_list))
+        return softmax_layer(inputs, self.filter_num*len(self.filter_list), self.config.random_base,
+                             self.keep_prob2, self.config.l2_reg, self.config.n_class)
 
     def add_loss(self, scores):
-        loss = tf.nn.softmax_cross_entropy_with_logits(labels=scores, logits=self.y)
+        loss = tf.nn.softmax_cross_entropy_with_logits(logits=scores, labels=self.y)
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         loss = tf.reduce_mean(loss) + sum(reg_loss)
         return loss
