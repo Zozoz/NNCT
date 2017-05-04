@@ -17,7 +17,7 @@ def cnn_layer(inputs, filter_shape, strides, padding, random_base, l2_reg, activ
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
     b = tf.get_variable(
-        name='softmax_b' + scope_name,
+        name='conv_b' + scope_name,
         shape=[filter_shape[-1]],
         # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
         initializer=tf.random_uniform_initializer(-random_base, random_base),

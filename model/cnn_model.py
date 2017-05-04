@@ -58,18 +58,18 @@ class CNN_Sentence(object):
 
     def add_cnn_layer(self, inputs):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
-        pooling_outpus = []
+        pooling_outputs = []
         for i, filter_size in enumerate(self.filter_list):
             filter_shape = [filter_size, self.config.embedding_dim, 1, self.filter_num]
             # Convolution layer
             conv = cnn_layer(inputs, filter_shape, [1, 1, 1, 1], 'VALID', self.config.random_base,
                              self.config.l2_reg, tf.nn.relu, str(i))
             # Pooling layer
-            pooling = tf.nn.max_pool(conv, ksize=[1, self.sen_len - filter_size + 1, 1, 1],
+            pooling = tf.nn.max_pool(conv, ksize=[1, self.config.max_sentence_len - filter_size + 1, 1, 1],
                                      strides=[1, 1, 1, 1], padding='VALID', name='pooling')
-            pooling_outpus.append(pooling)
+            pooling_outputs.append(pooling)
         # combine all pooling outputs
-        hiddens = tf.concat(3, pooling_outpus)
+        hiddens = tf.concat(pooling_outputs, 3)
         hiddens_flat = tf.reshape(hiddens, [-1, self.filter_num * len(self.filter_list)])
         return hiddens_flat
 
