@@ -87,8 +87,9 @@ class CNN_Sentence(object):
 
     def add_accuracy(self, scores):
         correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.y, 1))
+        accuracy_num = tf.reduce_sum(tf.cast(correct_predicts, tf.int32))
         accuracy = tf.reduce_mean(tf.cast(correct_predicts, tf.float32), name='accuracy')
-        return accuracy, correct_predicts
+        return accuracy, accuracy_num
 
     def create_model(self, inputs):
         hiddens = self.add_cnn_layer(inputs)
@@ -122,9 +123,11 @@ class CNN_Sentence(object):
             total_acc_num.append(acc_num)
             total_num.append(len(indices))
             if verbose and step % verbose == 0:
-                print '\n[INFO]{} : loss = {}, acc = {}, lr = {}'.format(
-                    step, sum(total_acc_num[-verbose:]) * 1.0 / sum(total_num[-verbose:]),
-                    np.mean(total_loss[-verbose:]), lr
+                print '\n[INFO] {} : loss = {}, acc = {}, lr = {}'.format(
+                    step,
+                    np.mean(total_loss[-verbose:]),
+                    sum(total_acc_num[-verbose:]) * 1.0 / sum(total_num[-verbose:]),
+                    lr
                 )
         return np.mean(total_loss), sum(total_acc_num) * 1.0 / sum(total_num)
 
@@ -132,7 +135,10 @@ class CNN_Sentence(object):
         res_list = []
         len_list = []
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
-            feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], data_y[indices] if data_y else None)
+            if data_y:
+                feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], data_y[indices])
+            else:
+                feed_dict = self.create_feed_dict(data_x[indices], data_len[indices])
             res = sess.run(op, feed_dict=feed_dict)
             res_list.append(res)
             len_list.append(len(indices))
