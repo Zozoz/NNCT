@@ -64,7 +64,40 @@ def cal_sen_sen_in_doc(doc_file, lex_file, doc_sentiment_file):
     print 'calculating done!'
 
 
+def add_sen_sen_in_doc(doc_file, lex_file, doc_file_new):
+    # load sentiment lexicon
+    lex_dict = dict()
+    for line in open(lex_file):
+        k, v = line.split()
+        lex_dict[k] = float(v)
+    print 'loading sentiment lexicon done!'
+    sf = open(doc_file)
+    df = open(doc_file_new, 'w')
+    for line in sf:
+        line = line.split('||')
+        y = line[0]
+        sents = line[-1].split('<sssss>')
+        df.write(y + '||')
+        for sent in sents:
+            p = rule_based_sentiment_analysis(sent, lex_dict)
+            if p > 0:
+                sent = '<POS> ' + sent + ' </POS>' + ' <sssss> '
+            elif p < 0:
+                sent = '<NEG> ' + sent + ' </NEG>' + ' <sssss> '
+            else:
+                sent = sent + ' <sssss> '
+            df.write(sent)
+        df.write('\n')
+
+
 def cv(files, dest_file, fd=10):
+    """
+    generate cross validate file
+    :param files: list type containing different polarity file name
+    :param dest_file: destination file directory path
+    :param fd: int type, n-fold
+    :return: none
+    """
     for file in files:
         lines = open(file).readlines()
         batch_size = len(lines) / fd
