@@ -27,9 +27,11 @@ def extract_word2id(sf, df, freq=1):
             w2c[word] += 1
     fp = open(df, 'w')
     w2c = sorted(w2c.items(), key=lambda d: d[1], reverse=True)
+    cnt = 0
     for k, v in w2c:
         if v >= freq:
-            fp.write(k.encode('utf8') + ' ' + str(v) + '\n')
+            cnt += 1
+            fp.write(k.encode('utf8') + ' ' + str(cnt) + '\n')
     print 'extract word2id done!'
 
 
