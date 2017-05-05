@@ -64,11 +64,11 @@ def cal_sen_sen_in_doc(doc_file, lex_file, doc_sentiment_file):
     print 'calculating done!'
 
 
-def cv_10(files, dest_file):
+def cv(files, dest_file, fd=10):
     for file in files:
         lines = open(file).readlines()
-        batch_size = len(lines) / 10
-        for i in range(10):
+        batch_size = len(lines) / fd
+        for i in range(fd):
             s = i * batch_size
             e = s + batch_size
             test_f = open(dest_file + '/' + str(i) + '_test.txt', 'a')
