@@ -77,12 +77,12 @@ def add_sen_sen_in_doc(doc_file, lex_file, doc_file_new):
         line = line.split('||')
         y = line[0]
         sents = line[-1].strip().split('<sssss>')
-        df.write(y + '||')
+        df.write(y + '|| ')
         for sent in sents:
             p = rule_based_sentiment_analysis(sent, lex_dict)
             if p > 1:
                 sent = '<POS> ' + sent + ' </POS>' + ' <sssss> '
-            elif p < -1:
+            elif p < 0:
                 sent = '<NEG> ' + sent + ' </NEG>' + ' <sssss> '
             else:
                 sent = sent + ' <sssss> '
