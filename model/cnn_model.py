@@ -10,7 +10,7 @@ import numpy as np
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 from utils.config import *
-from utils.data_helper import load_w2v, load_inputs_sentence, batch_index
+from utils.data_helper import load_w2v, load_inputs_sentence, batch_index, load_word2id
 from newbie_nn.nn_layer import cnn_layer, softmax_layer
 
 
@@ -41,9 +41,13 @@ class CNN_Sentence(object):
     def add_embedding(self):
         if self.config.pre_trained == 'yes':
             self.word2id, w2v = load_w2v(self.config.embedding_file, self.config.embedding_dim, True)
+        else:
+            self.word2id = load_word2id(self.config.word2id_file)
+            w2v = tf.random_uniform([self.vocab_size, self.config.embedding_dim], -1.0, 1.0)
+        if self.config.embedding_type == 'static':
             self.embedding = tf.constant(w2v, dtype=tf.float32, name='word_embedding')
         else:
-            self.embedding = tf.Variable(tf.random_uniform([self.vocab_size, self.config.embedding_dim], -1.0, 1.0))
+            self.embedding = tf.Variable(w2v, dtype=tf.float32, name='word_embedding')
         inputs = tf.nn.embedding_lookup(self.embedding, self.x)
         inputs = tf.expand_dims(inputs, -1)
         return inputs
@@ -189,12 +193,12 @@ def train_run(_):
                 print '=' * 50
                 val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_y)
                 print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
-                if best_accuracy > val_accuracy:
+                if best_accuracy < val_accuracy:
                     best_accuracy = val_accuracy
                     best_val_epoch = epoch
                     if not os.path.exists(classifier.config.weights_save_path):
                         os.makedirs(classifier.config.weights_save_path)
-                    saver.save(sess, classifier.config.weight_save_path + '/weights')
+                    saver.save(sess, classifier.config.weights_save_path + '/weights')
                 if epoch - best_val_epoch > classifier.config.early_stopping:
                     print 'Normal early stop!'
                     break

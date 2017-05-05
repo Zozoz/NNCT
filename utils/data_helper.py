@@ -20,6 +20,20 @@ def batch_index(length, batch_size, n_iter=100, is_shuffle=True, is_train=True):
             yield index[i * batch_size:(i + 1) * batch_size]
 
 
+def load_word2id(word2id_file, encoding='utf8'):
+    """
+    :param word2id_file: word-id mapping file path
+    :param encoding: file's encoding, for changing to unicode
+    :return: word-id mapping, like hello=5
+    """
+    word2id = dict()
+    for line in open(word2id_file):
+        line = line.decode(encoding, 'ignore').lower().split()
+        word2id[line[0]] = int(line[1])
+    print '\nload word-id mapping done!\n'
+    return word2id
+
+
 def load_w2v(w2v_file, embedding_dim, is_skip=False):
     fp = open(w2v_file)
     if is_skip:
@@ -48,20 +62,6 @@ def load_w2v(w2v_file, embedding_dim, is_skip=False):
     return word_dict, w2v
 
 
-def load_word_id_mapping(word_id_file, encoding='utf8'):
-    """
-    :param word_id_file: word-id mapping file path
-    :param encoding: file's encoding, for changing to unicode
-    :return: word-id mapping, like hello=5
-    """
-    word_to_id = dict()
-    for line in open(word_id_file):
-        line = line.decode(encoding, 'ignore').lower().split()
-        word_to_id[line[0]] = int(line[1])
-    print '\nload word-id mapping done!\n'
-    return word_to_id
-
-
 def change_y_to_onehot(y):
     from collections import Counter
     print Counter(y)
@@ -79,7 +79,7 @@ def change_y_to_onehot(y):
 
 def load_inputs_document(input_file, sen_sen_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
     if type(word_id_file) is str:
-        word_to_id = load_word_id_mapping(word_id_file)
+        word_to_id = load_word2id(word_id_file)
     else:
         word_to_id = word_id_file
     print 'load word-to-id done!'
@@ -129,7 +129,7 @@ def load_inputs_document(input_file, sen_sen_file, word_id_file, max_sen_len, ma
 
 def load_inputs_sentence(input_file, word_id_file, sentence_len, encoding='utf8'):
     if type(word_id_file) is str:
-        word_to_id = load_word_id_mapping(word_id_file)
+        word_to_id = load_word2id(word_id_file)
     else:
         word_to_id = word_id_file
     print 'load word-to-id done!'
