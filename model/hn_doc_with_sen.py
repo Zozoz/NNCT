@@ -139,7 +139,7 @@ class HN_DOC_WITH_SEN(object):
         total_loss = []
         total_acc_num = []
         total_num = []
-        for step, indices in enumerate(batch_index(len(self.doc_y), self.config.batch_size, 1)):
+        for step, indices in enumerate(batch_index(len(self.train_doc_y), self.config.batch_size, 1)):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
