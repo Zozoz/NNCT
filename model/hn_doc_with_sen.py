@@ -102,7 +102,7 @@ class HN_DOC_WITH_SEN(object):
         return sen_loss, loss
 
     def add_accuracy(self, scores):
-        correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.y, 1))
+        correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.doc_y, 1))
         accuracy_num = tf.reduce_sum(tf.cast(correct_predicts, tf.int32))
         accuracy = tf.reduce_mean(tf.cast(correct_predicts, tf.float32), name='accuracy')
         return accuracy, accuracy_num
