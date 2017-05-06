@@ -10,7 +10,7 @@ import numpy as np
 
 from utils.config import *
 from utils.data_helper import load_w2v, load_inputs_document, load_word2id, batch_index
-from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer
+from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len
 from newbie_nn.att_layer import mlp_attention_layer
 
 
@@ -21,7 +21,7 @@ class HN_DOC_WITH_SEN(object):
 
         self.add_placeholder()
         inputs = self.add_embedding()
-        self.sen_logits, self.doc_logits = self.create_model(inputs)
+        self.sen_logits, self.doc_logits, self.mask = self.create_model(inputs)
         self.predict_prob = tf.nn.softmax(self.doc_logits)
         self.load_data()
         self.sen_loss, self.doc_loss = self.add_loss(self.sen_logits, self.doc_logits)
@@ -92,13 +92,15 @@ class HN_DOC_WITH_SEN(object):
         # outputs_doc = tf.reshape(tf.matmul(alpha_doc, hiddens_doc), [-1, 2 * self.config.n_hidden])
 
         logits = softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
-        return sen_logits, logits
+        return sen_logits, logits, mask
 
     def add_loss(self, sen_scores, doc_scores):
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=self.sen_y)
+        sen_loss = tf.reshape(sen_loss, [-1, self.config.max_doc_len])
+        sen_loss = reduce_mean_with_len(sen_loss, self.doc_len)
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = tf.reduce_mean(doc_loss) + sum(reg_loss)
+        loss = tf.reduce_mean(doc_loss) + tf.reduce_mean(sen_loss) + sum(reg_loss)
         return sen_loss, loss
 
     def add_accuracy(self, scores):
@@ -143,7 +145,8 @@ class HN_DOC_WITH_SEN(object):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
-            _, loss, acc_num, lr = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
+            _, loss, acc_num, lr, mask = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr, self.mask], feed_dict=feed_dict)
+            print np.shape(mask)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
             total_num.append(len(indices))
