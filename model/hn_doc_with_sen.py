@@ -85,7 +85,7 @@ class HN_DOC_WITH_SEN(object):
         alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
 
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
-        outputs_doc = tf.matmul(alpha_sen, outputs_sen)
+        outputs_doc = tf.squeeze(tf.matmul(alpha_sen, outputs_sen))
         # sentence to doc
         # hiddens_doc = bi_dynamic_rnn(cell, outputs_sen, self.config.n_hidden, self.doc_len, self.config.max_doc_len, 'doc', 'all')
         # alpha_doc = mlp_attention_layer(hiddens_doc, self.doc_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 2)
