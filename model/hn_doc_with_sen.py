@@ -64,7 +64,7 @@ class HN_DOC_WITH_SEN(object):
             holder_list = [self.x, self.sen_len, self.doc_len, self.sen_y]
             feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch]
         else:
-            holder_list = [self.x, self.sen_len, self.doc_len, self.sen_y, self.y, self.keep_prob1, self.keep_prob2]
+            holder_list = [self.x, self.sen_len, self.doc_len, self.sen_y, self.doc_y, self.keep_prob1, self.keep_prob2]
             feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
