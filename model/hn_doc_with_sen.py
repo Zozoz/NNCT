@@ -77,7 +77,7 @@ class HN_DOC_WITH_SEN(object):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, 'sentence', 'all')
         alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 1)
-        outputs_sen = tf.batch_matmul(alpha_sen, hiddens_sen)
+        outputs_sen = tf.matmul(alpha_sen, hiddens_sen)
 
         sen_logits = softmax_layer(outputs_sen, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3)
         mask = tf.reshape(tf.cast(tf.sequence_mask(tf.constant([2] * batch_size), 3), tf.float32), tf.shape(sen_logits))
@@ -85,11 +85,11 @@ class HN_DOC_WITH_SEN(object):
         alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
 
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
-        outputs_doc = tf.batch_matmul(alpha_sen, outputs_sen)
+        outputs_doc = tf.matmul(alpha_sen, outputs_sen)
         # sentence to doc
         # hiddens_doc = bi_dynamic_rnn(cell, outputs_sen, self.config.n_hidden, self.doc_len, self.config.max_doc_len, 'doc', 'all')
         # alpha_doc = mlp_attention_layer(hiddens_doc, self.doc_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 2)
-        # outputs_doc = tf.reshape(tf.batch_matmul(alpha_doc, hiddens_doc), [-1, 2 * self.config.n_hidden])
+        # outputs_doc = tf.reshape(tf.matmul(alpha_doc, hiddens_doc), [-1, 2 * self.config.n_hidden])
 
         logits = softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class)
         return sen_logits, logits
