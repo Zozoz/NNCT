@@ -77,7 +77,7 @@ class HN_DOC_WITH_SEN(object):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, 'sentence', 'all')
         alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 1)
-        outputs_sen = tf.matmul(alpha_sen, hiddens_sen)
+        outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
 
         sen_logits = softmax_layer(outputs_sen, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3)
         mask = tf.reshape(tf.cast(tf.sequence_mask(tf.constant([2] * batch_size), 3), tf.float32), tf.shape(sen_logits))
