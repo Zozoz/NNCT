@@ -15,11 +15,10 @@ from newbie_nn.nn_layer import cnn_layer, softmax_layer
 
 class CNN_Sentence(object):
 
-    def __init__(self, filter_list, filter_num, vocab_size=10000):
+    def __init__(self, filter_list, filter_num):
         self.config = FLAGS
         self.filter_list = filter_list
         self.filter_num = filter_num
-        self.vocab_size = vocab_size
 
         self.add_placeholder()
         inputs = self.add_embedding()
@@ -42,6 +41,7 @@ class CNN_Sentence(object):
             self.word2id, w2v = load_w2v(self.config.embedding_file, self.config.embedding_dim, True)
         else:
             self.word2id = load_word2id(self.config.word2id_file)
+            self.vocab_size = len(self.word2id) + 1
             w2v = tf.random_uniform([self.vocab_size, self.config.embedding_dim], -1.0, 1.0)
         if self.config.embedding_type == 'static':
             self.embedding = tf.constant(w2v, dtype=tf.float32, name='word_embedding')

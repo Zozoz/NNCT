@@ -77,7 +77,7 @@ def change_y_to_onehot(y):
     return np.asarray(onehot, dtype=np.int32)
 
 
-def load_inputs_document(input_file, sen_sen_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
+def load_inputs_document(input_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
     if type(word_id_file) is str:
         word_to_id = load_word2id(word_id_file)
     else:
@@ -86,21 +86,18 @@ def load_inputs_document(input_file, sen_sen_file, word_id_file, max_sen_len, ma
 
     x, y, sen_len, doc_len, sen_y = [], [], [], [], []
     f1 = open(input_file)
-    f2 = open(sen_sen_file)
-    for l1, l2 in zip(f1, f2):
+    for l1 in f1:
         l1 = l1.lower().decode('utf8', 'ignore').split('||')
         # y.append(line[0])
 
         t_sen_len = [0] * max_doc_len
-        t_sen_y = [0] * max_doc_len
+        t_sen_y = [[0, 0, 0]] * max_doc_len
         t_x = np.zeros((max_doc_len, max_sen_len))
         doc = ' '.join(l1[1:])
         sentences = doc.split('<sssss>')
         i = 0
         flag = False
-        l2 = l2.split()
-        for sentence, sy in zip(sentences, l2):
-            t_sen_y[i] = sy
+        for sentence in sentences:
             j = 0
             for word in sentence.split():
                 if j < max_sen_len:
@@ -109,9 +106,16 @@ def load_inputs_document(input_file, sen_sen_file, word_id_file, max_sen_len, ma
                         j += 1
                 else:
                     break
-            t_sen_len[i] = j
-            i += 1
-            flag = True
+            if j > 0:
+                t_sen_len[i] = j
+                if '<POS>' in sentence:
+                    t_sen_y[i] = [1, 0, 0]
+                elif '<NEG>' in sentence:
+                    t_sen_y[i] = [0, 1, 0]
+                else:
+                    t_sen_y[i] = [0, 0, 1]
+                i += 1
+                flag = True
             if i >= max_doc_len:
                 break
         if flag:
@@ -122,6 +126,7 @@ def load_inputs_document(input_file, sen_sen_file, word_id_file, max_sen_len, ma
             sen_y.append(t_sen_y)
 
     y = change_y_to_onehot(y)
+    # sen_y = change_y_to_onehot(sen_y)
     print 'load input {} done!'.format(input_file)
 
     return np.asarray(x), np.asarray(sen_len), np.asarray(doc_len), np.asarray(sen_y), np.asarray(y)
