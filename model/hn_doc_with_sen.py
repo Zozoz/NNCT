@@ -79,7 +79,7 @@ class HN_DOC_WITH_SEN(object):
         alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 1)
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
 
-        sen_logits = softmax_layer(outputs_sen, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3)
+        sen_logits = softmax_layer(outputs_sen, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
         mask = tf.reshape(tf.cast(tf.sequence_mask([2] * batch_size, 3), tf.float32), tf.shape(sen_logits))
         tmp = sen_logits * mask
         alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
@@ -91,7 +91,7 @@ class HN_DOC_WITH_SEN(object):
         # alpha_doc = mlp_attention_layer(hiddens_doc, self.doc_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 2)
         # outputs_doc = tf.reshape(tf.matmul(alpha_doc, hiddens_doc), [-1, 2 * self.config.n_hidden])
 
-        logits = softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class)
+        logits = softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
         return sen_logits, logits
 
     def add_loss(self, sen_scores, doc_scores):
