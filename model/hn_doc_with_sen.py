@@ -80,7 +80,7 @@ class HN_DOC_WITH_SEN(object):
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
 
         sen_logits = softmax_layer(outputs_sen, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
-        mask = tf.reshape(tf.cast(tf.sequence_mask([2] * batch_size, 3), tf.float32), tf.shape(sen_logits))
+        mask = tf.reshape(tf.cast(tf.sequence_mask([2] * batch_size * self.config.max_doc_len, 3), tf.float32), tf.shape(sen_logits))
         tmp = sen_logits * mask
         alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
 
