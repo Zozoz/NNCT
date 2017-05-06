@@ -178,7 +178,7 @@ def train_run(_):
             best_accuracy = 0
             best_val_epoch = 0
             val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y = \
-                classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.sen_y, classifier.doc_y
+                classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_sen_y, classifier.val_doc_y
             for epoch in range(classifier.config.n_iter):
                 print '=' * 20 + 'Epoch ', epoch, '=' * 20
                 loss, acc = classifier.run_epoch(sess)
