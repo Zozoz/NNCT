@@ -74,6 +74,7 @@ class HN_DOC_WITH_SEN(object):
         cell = tf.contrib.rnn.LSTMCell
         # word to sentence
         sen_len = tf.reshape(self.sen_len, [-1])
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, 'sentence', 'all')
         alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 1)
         outputs_sen = tf.batch_matmul(alpha_sen, hiddens_sen)
