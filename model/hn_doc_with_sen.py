@@ -11,7 +11,7 @@ import numpy as np
 from utils.config import *
 from utils.data_helper import load_w2v, load_inputs_document, load_word2id, batch_index
 from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len
-from newbie_nn.att_layer import mlp_attention_layer
+from newbie_nn.att_layer import mlp_attention_layer, softmax_with_len
 
 
 class HN_DOC_WITH_SEN(object):
@@ -80,9 +80,10 @@ class HN_DOC_WITH_SEN(object):
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
 
         sen_logits = softmax_layer(outputs_sen, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
-        mask = tf.sequence_mask([2] * batch_size * self.config.max_doc_len, 3, tf.float32)
+        mask = tf.sequence_mask([2], 3, tf.float32)
         tmp = sen_logits * mask
         alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
+        alpha_sen = softmax_with_len(alpha_sen, self.doc_len, self.config.max_doc_len)
 
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
         outputs_doc = tf.squeeze(tf.matmul(alpha_sen, outputs_sen))
