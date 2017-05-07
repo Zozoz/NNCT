@@ -126,7 +126,7 @@ class HN_DOC_WITH_SEN(object):
 
         outputs_doc = bi_dynamic_rnn(tf.contrib.rnn.LSTMCell, outputs_sen, self.config.n_hidden, self.doc_len,
                                      self.config.max_doc_len, 'doc', 'all')
-        outputs_doc = tf.matmul(alpha_doc, outputs_doc)
+        outputs_doc = tf.squeeze(tf.matmul(alpha_doc, outputs_doc))
 
         doc_logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 5, 'doc')
 
