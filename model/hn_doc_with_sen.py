@@ -99,7 +99,7 @@ class HN_DOC_WITH_SEN(object):
         hiddens_flat = tf.reshape(hiddens, [-1, self.filter_num * len(self.filter_list)])
         return hiddens_flat
 
-    def create_model1(self, inputs):
+    def create_model(self, inputs):
         outputs_sen = self.add_cnn_layer(inputs)
         outputs_sen_dim = self.filter_num * len(self.filter_list)
 
