@@ -84,6 +84,7 @@ class HN_DOC_WITH_SEN(object):
     def add_cnn_layer(self, inputs):
         inputs = tf.expand_dims(inputs, -1)
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         pooling_outputs = []
         for i, filter_size in enumerate(self.filter_list):
             filter_shape = [filter_size, self.config.embedding_dim, 1, self.filter_num]
