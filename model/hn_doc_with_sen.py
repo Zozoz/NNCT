@@ -23,7 +23,7 @@ class HN_DOC_WITH_SEN(object):
 
         self.add_placeholder()
         inputs = self.add_embedding()
-        self.sen_logits, self.doc_logits, self.mask = self.create_model(inputs)
+        self.sen_logits, self.doc_logits = self.create_model(inputs)
         self.predict_prob = tf.nn.softmax(self.doc_logits)
         self.load_data()
         self.sen_loss, self.doc_loss = self.add_loss(self.sen_logits, self.doc_logits)
@@ -75,14 +75,12 @@ class HN_DOC_WITH_SEN(object):
         cell = tf.contrib.rnn.LSTMCell
         # word to sentence
         sen_len = tf.reshape(self.sen_len, [-1])
-        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, 'sentence', 'all')
         alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 1)
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
         return outputs_sen
 
     def add_cnn_layer(self, inputs):
-        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         inputs = tf.expand_dims(inputs, -1)
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         pooling_outputs = []
@@ -100,7 +98,19 @@ class HN_DOC_WITH_SEN(object):
         hiddens_flat = tf.reshape(hiddens, [-1, self.filter_num * len(self.filter_list)])
         return hiddens_flat
 
+    def create_model_1(self, inputs):
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
+        outputs_sen = self.add_cnn_layer(inputs)
+        outputs_sen_dim = self.filter_num * len(self.filter_list)
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
+        outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
+        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2,
+                               self.config.l2_reg, self.config.n_class)
+        return logits
+
     def create_model(self, inputs):
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
+
         outputs_sen = self.add_cnn_layer(inputs)
         outputs_sen_dim = self.filter_num * len(self.filter_list)
 
@@ -117,7 +127,7 @@ class HN_DOC_WITH_SEN(object):
         outputs_doc = tf.squeeze(tf.matmul(alpha_sen, outputs_sen))
 
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
-        return sen_logits, logits, mask
+        return sen_logits, logits
 
     def add_loss(self, sen_scores, doc_scores):
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=self.sen_y)
@@ -170,8 +180,7 @@ class HN_DOC_WITH_SEN(object):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
-            _, loss, acc_num, lr, mask = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr, self.mask], feed_dict=feed_dict)
-            # print np.shape(mask)
+            _, loss, acc_num, lr = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
             total_num.append(len(indices))
