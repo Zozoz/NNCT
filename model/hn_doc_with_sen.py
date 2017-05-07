@@ -170,7 +170,7 @@ class HN_DOC_WITH_SEN(object):
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
             _, loss, acc_num, lr, mask = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr, self.mask], feed_dict=feed_dict)
-            print np.shape(mask)
+            # print np.shape(mask)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
             total_num.append(len(indices))
