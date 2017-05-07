@@ -70,17 +70,17 @@ class HN_DOC_WITH_SEN(object):
             feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
-    def add_bilstm_layer(self, inputs):
+    def add_bilstm_layer(self, inputs, scope_name='1'):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         cell = tf.contrib.rnn.LSTMCell
         # word to sentence
         sen_len = tf.reshape(self.sen_len, [-1])
-        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, 'sentence', 'all')
-        alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 1)
+        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, scope_name, 'all')
+        alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
         return outputs_sen
 
-    def add_cnn_layer(self, inputs):
+    def add_cnn_layer(self, inputs, scope_name='1'):
         inputs = tf.expand_dims(inputs, -1)
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         pooling_outputs = []
@@ -88,7 +88,7 @@ class HN_DOC_WITH_SEN(object):
             filter_shape = [filter_size, self.config.embedding_dim, 1, self.filter_num]
             # Convolution layer
             conv = cnn_layer(inputs, filter_shape, [1, 1, 1, 1], 'VALID', self.config.random_base,
-                             self.config.l2_reg, tf.nn.relu, str(i))
+                             self.config.l2_reg, tf.nn.relu, scope_name + str(i))
             # Pooling layer
             pooling = tf.nn.max_pool(conv, ksize=[1, self.config.max_sentence_len - filter_size + 1, 1, 1],
                                      strides=[1, 1, 1, 1], padding='VALID', name='pooling')
@@ -107,6 +107,31 @@ class HN_DOC_WITH_SEN(object):
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2,
                                self.config.l2_reg, self.config.n_class)
         return logits
+
+    def create_model_2(self, inputs):
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
+
+        # outputs_sen = self.add_cnn_layer(inputs, 'sen')
+        # outputs_sen_dim = self.filter_num * len(self.filter_list)
+
+        outputs_sen = self.add_bilstm_layer(inputs, 'sen')
+        outputs_sen_dim = 2 * self.config.n_hidden
+
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
+        mask = tf.sequence_mask([2], 3, tf.float32)
+        tmp = sen_logits * mask
+        alpha_doc = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
+        alpha_doc = softmax_with_len(alpha_doc, self.doc_len, self.config.max_doc_len)
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
+
+        outputs_doc = bi_dynamic_rnn(tf.contrib.rnn.LSTMCell, outputs_sen, self.config.n_hidden, self.doc_len,
+                                     self.config.max_doc_len, 'doc', 'all')
+        outputs_doc = tf.matmul(alpha_doc, outputs_doc)
+
+        doc_logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 5, 'doc')
+
+        return sen_logits, doc_logits
+
 
     def create_model(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
