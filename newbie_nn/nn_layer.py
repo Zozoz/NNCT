@@ -8,16 +8,16 @@ import numpy as np
 import tensorflow as tf
 
 
-def cnn_layer(inputs, filter_shape, strides, padding, random_base, l2_reg, active_func=None, scope_name="conv"):
+def cnn_layer(inputs, filter_shape, strides, padding, random_base, l2_reg, active_func=None, scope_name="1"):
     w = tf.get_variable(
-        name='conv' + scope_name,
+        name='conv_w_' + scope_name,
         shape=filter_shape,
         # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
         initializer=tf.random_uniform_initializer(-random_base, random_base),
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
     b = tf.get_variable(
-        name='conv_b' + scope_name,
+        name='conv_b_' + scope_name,
         shape=[filter_shape[-1]],
         # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
         initializer=tf.random_uniform_initializer(-random_base, random_base),
@@ -130,7 +130,7 @@ def reduce_mean_with_len(inputs, length):
 
 def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, scope_name='1'):
     w = tf.get_variable(
-        name='softmax_w' + scope_name,
+        name='softmax_w_' + scope_name,
         shape=[n_hidden, n_class],
         initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_class))),
         # initializer=tf.random_uniform_initializer(-random_base, random_base),
@@ -138,7 +138,7 @@ def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, sco
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
     b = tf.get_variable(
-        name='softmax_b' + scope_name,
+        name='softmax_b_' + scope_name,
         shape=[n_class],
         initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_class))),
         # initializer=tf.random_uniform_initializer(-random_base, random_base),

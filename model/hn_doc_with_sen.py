@@ -10,14 +10,16 @@ import numpy as np
 
 from utils.config import *
 from utils.data_helper import load_w2v, load_inputs_document, load_word2id, batch_index
-from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len
+from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len, cnn_layer
 from newbie_nn.att_layer import mlp_attention_layer, softmax_with_len
 
 
 class HN_DOC_WITH_SEN(object):
 
-    def __init__(self):
+    def __init__(self, filter_list=(3, 4, 5), filter_num=100):
         self.config = FLAGS
+        self.filter_list = filter_list
+        self.filter_num = filter_num
 
         self.add_placeholder()
         inputs = self.add_embedding()
@@ -68,8 +70,7 @@ class HN_DOC_WITH_SEN(object):
             feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
-    def create_model(self, inputs):
-        batch_size = tf.shape(inputs)[0]
+    def add_bilstm_layer(self, inputs):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         cell = tf.contrib.rnn.LSTMCell
         # word to sentence
@@ -78,21 +79,43 @@ class HN_DOC_WITH_SEN(object):
         hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, 'sentence', 'all')
         alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 1)
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
+        return outputs_sen
 
-        sen_logits = softmax_layer(outputs_sen, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
+    def add_cnn_layer(self, inputs):
+        inputs = tf.expand_dims(inputs, -1)
+        inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
+        pooling_outputs = []
+        for i, filter_size in enumerate(self.filter_list):
+            filter_shape = [filter_size, self.config.embedding_dim, 1, self.filter_num]
+            # Convolution layer
+            conv = cnn_layer(inputs, filter_shape, [1, 1, 1, 1], 'VALID', self.config.random_base,
+                             self.config.l2_reg, tf.nn.relu, str(i))
+            # Pooling layer
+            pooling = tf.nn.max_pool(conv, ksize=[1, self.config.max_sentence_len - filter_size + 1, 1, 1],
+                                     strides=[1, 1, 1, 1], padding='VALID', name='pooling')
+            pooling_outputs.append(pooling)
+        # combine all pooling outputs
+        hiddens = tf.concat(pooling_outputs, 3)
+        hiddens_flat = tf.reshape(hiddens, [-1, self.filter_num * len(self.filter_list)])
+        return hiddens_flat
+
+    def create_model1(self, inputs):
+        outputs_sen = self.add_cnn_layer(inputs)
+        outputs_sen_dim = self.filter_num * len(self.filter_list)
+
+        # outputs_sen = self.add_bilstm_layer(inputs)
+        # outputs_sen_dim = 2 * self.config.n_hidden
+
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
         mask = tf.sequence_mask([2], 3, tf.float32)
         tmp = sen_logits * mask
         alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
         alpha_sen = softmax_with_len(alpha_sen, self.doc_len, self.config.max_doc_len)
 
-        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = tf.squeeze(tf.matmul(alpha_sen, outputs_sen))
-        # sentence to doc
-        # hiddens_doc = bi_dynamic_rnn(cell, outputs_sen, self.config.n_hidden, self.doc_len, self.config.max_doc_len, 'doc', 'all')
-        # alpha_doc = mlp_attention_layer(hiddens_doc, self.doc_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, 2)
-        # outputs_doc = tf.reshape(tf.matmul(alpha_doc, hiddens_doc), [-1, 2 * self.config.n_hidden])
 
-        logits = softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
+        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
         return sen_logits, logits, mask
 
     def add_loss(self, sen_scores, doc_scores):
