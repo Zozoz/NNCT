@@ -20,7 +20,7 @@ def softmax_with_len(inputs, length, max_len):
     return inputs / _sum
 
 
-def bilinear_attention_layer(inputs, attend, length, n_hidden, l2_reg, random_base, layer_id=1):
+def bilinear_attention_layer(inputs, attend, length, n_hidden, l2_reg, random_base, layer_id='1'):
     """
     :param inputs: batch * max_len * n_hidden
     :param attend: batch * n_hidden
@@ -50,7 +50,7 @@ def bilinear_attention_layer(inputs, attend, length, n_hidden, l2_reg, random_ba
     return softmax_with_len(tmp, length, max_len)
 
 
-def dot_produce_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=1):
+def dot_produce_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id='1'):
     """
     :param inputs: batch * max_len * n_hidden
     :param length: batch * 1
@@ -76,7 +76,7 @@ def dot_produce_attention_layer(inputs, length, n_hidden, l2_reg, random_base, l
     return alpha
 
 
-def mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=1):
+def mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id='1'):
     """
     :param inputs: batch * max_len * n_hidden
     :param length: batch * 1
@@ -118,7 +118,7 @@ def mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=
     return alpha
 
 
-def Mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=1):
+def Mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id='1'):
     """
     :param inputs: batch * max_len * n_hidden
     :param length: batch * 1

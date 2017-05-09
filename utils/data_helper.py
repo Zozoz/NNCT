@@ -84,6 +84,51 @@ def load_inputs_document(input_file, word_id_file, max_sen_len, max_doc_len, _ty
         word_to_id = word_id_file
     print 'load word-to-id done!'
 
+    x, y, sen_len, doc_len = [], [], [], []
+    f1 = open(input_file)
+    for l1 in f1:
+        l1 = l1.lower().decode('utf8', 'ignore').split('||')
+
+        t_sen_len = [0] * max_doc_len
+        t_x = np.zeros((max_doc_len, max_sen_len))
+        doc = ' '.join(l1[1:])
+        sentences = doc.split('<sssss>')
+        i = 0
+        flag = False
+        for sentence in sentences:
+            j = 0
+            for word in sentence.split():
+                if j < max_sen_len:
+                    if word in word_to_id:
+                        t_x[i, j] = word_to_id[word]
+                        j += 1
+                else:
+                    break
+            if j > 0:
+                t_sen_len[i] = j
+                i += 1
+                flag = True
+            if i >= max_doc_len:
+                break
+        if flag:
+            doc_len.append(i)
+            sen_len.append(t_sen_len)
+            x.append(t_x)
+            y.append(l1[0])
+
+    y = change_y_to_onehot(y)
+    print 'load input {} done!'.format(input_file)
+
+    return np.asarray(x), np.asarray(sen_len), np.asarray(doc_len), np.asarray(y)
+
+
+def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
+    if type(word_id_file) is str:
+        word_to_id = load_word2id(word_id_file)
+    else:
+        word_to_id = word_id_file
+    print 'load word-to-id done!'
+
     x, y, sen_len, doc_len, sen_y = [], [], [], [], []
     f1 = open(input_file)
     for l1 in f1:

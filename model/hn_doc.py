@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 import numpy as np
 
 from utils.config import *
-from utils.data_helper import load_w2v, load_inputs_document_sen, load_word2id, batch_index
+from utils.data_helper import load_w2v, load_inputs_document, load_word2id, batch_index
 from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len, cnn_layer
 from newbie_nn.att_layer import mlp_attention_layer, softmax_with_len
 
@@ -23,19 +23,18 @@ class HN_DOC_WITH_SEN(object):
 
         self.add_placeholder()
         inputs = self.add_embedding()
-        self.sen_logits, self.doc_logits = self.create_model(inputs)
+        self.doc_logits = self.create_model_1(inputs)
         self.predict_prob = tf.nn.softmax(self.doc_logits)
         self.load_data()
-        self.sen_loss, self.doc_loss = self.add_loss(self.sen_logits, self.doc_logits)
+        self.sen_loss, self.doc_loss = self.add_loss(self.doc_logits)
         self.accuracy, self.accuracy_num = self.add_accuracy(self.doc_logits)
-        self.train_op = self.add_train_op(self.sen_loss, self.doc_loss)
+        self.train_op = self.add_train_op(self.doc_loss)
 
     def add_placeholder(self):
         self.x = tf.placeholder(tf.int32, [None, self.config.max_doc_len, self.config.max_sentence_len])
         self.doc_y = tf.placeholder(tf.float32, [None, self.config.n_class])
         self.sen_len = tf.placeholder(tf.int32, [None, self.config.max_doc_len])
         self.doc_len = tf.placeholder(tf.int32, [None])
-        self.sen_y = tf.placeholder(tf.float32, [None, self.config.max_doc_len, 3])
         self.keep_prob1 = tf.placeholder(tf.float32)
         self.keep_prob2 = tf.placeholder(tf.float32)
 
@@ -54,29 +53,28 @@ class HN_DOC_WITH_SEN(object):
         return inputs
 
     def load_data(self):
-        self.train_x, self.train_sen_len, self.train_doc_len, self.train_sen_y, self.train_doc_y = load_inputs_document_sen(
+        self.train_x, self.train_sen_len, self.train_doc_len,  self.train_doc_y = load_inputs_document(
             self.config.train_file, self.word2id, self.config.max_sentence_len, self.config.max_doc_len)
-        self.test_x, self.test_sen_len, self.test_doc_len, self.test_sen_y, self.test_doc_y = load_inputs_document_sen(
+        self.test_x, self.test_sen_len, self.test_doc_len, self.test_doc_y = load_inputs_document(
             self.config.test_file, self.word2id, self.config.max_sentence_len, self.config.max_doc_len)
-        self.val_x, self.val_sen_len, self.val_doc_len, self.val_sen_y, self.val_doc_y = load_inputs_document_sen(
+        self.val_x, self.val_sen_len, self.val_doc_len, self.val_doc_y = load_inputs_document(
             self.config.val_file, self.word2id, self.config.max_sentence_len, self.config.max_doc_len)
 
-    def create_feed_dict(self, x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch=None):
+    def create_feed_dict(self, x_batch, sen_len_batch, doc_len_batch, y_batch=None):
         if y_batch is None:
-            holder_list = [self.x, self.sen_len, self.doc_len, self.sen_y]
-            feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch]
+            holder_list = [self.x, self.sen_len, self.doc_len]
+            feed_list = [x_batch, sen_len_batch, doc_len_batch]
         else:
-            holder_list = [self.x, self.sen_len, self.doc_len, self.sen_y, self.doc_y, self.keep_prob1, self.keep_prob2]
-            feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
+            holder_list = [self.x, self.sen_len, self.doc_len, self.doc_y, self.keep_prob1, self.keep_prob2]
+            feed_list = [x_batch, sen_len_batch, doc_len_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
-    def add_bilstm_layer(self, inputs, scope_name='1'):
+    def add_bilstm_layer(self, inputs, seq_len, scope_name='1'):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         cell = tf.contrib.rnn.LSTMCell
-        # word to sentence
-        sen_len = tf.reshape(self.sen_len, [-1])
-        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, scope_name, 'all')
-        alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
+        seq_len = tf.reshape(seq_len, [-1])
+        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, seq_len, self.config.max_sentence_len, scope_name, 'all')
+        alpha_sen = mlp_attention_layer(hiddens_sen, seq_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
         return outputs_sen
 
@@ -110,57 +108,20 @@ class HN_DOC_WITH_SEN(object):
 
     def create_model_2(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
+        inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
+        cell = tf.contrib.rnn.LSTMCell,
+        outputs_dim = 2 * self.config.n_hidden
+        outputs_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, self.sen_len, self.config.max_sentence_len, 'sen', 'last')
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_dim])
+        outputs_doc = bi_dynamic_rnn(cell, outputs_sen, self.config.n_hidden, self.doc_len, self.config.max_doc_len, 'doc', 'last')
+        doc_logits = softmax_layer(outputs_doc, outputs_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
+        return doc_logits
 
-        # outputs_sen = self.add_cnn_layer(inputs, 'sen')
-        # outputs_sen_dim = self.filter_num * len(self.filter_list)
-
-        outputs_sen = self.add_bilstm_layer(inputs, 'sen')
-        outputs_sen_dim = 2 * self.config.n_hidden
-
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
-        mask = tf.sequence_mask([2], 3, tf.float32)
-        tmp = sen_logits * mask
-        alpha_doc = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
-        alpha_doc = softmax_with_len(alpha_doc, self.doc_len, self.config.max_doc_len)
-        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
-
-        outputs_doc = bi_dynamic_rnn(tf.contrib.rnn.LSTMCell, outputs_sen, self.config.n_hidden, self.doc_len,
-                                     self.config.max_doc_len, 'doc', 'all')
-        outputs_doc = tf.squeeze(tf.matmul(alpha_doc, outputs_doc))
-
-        doc_logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 5, 'doc')
-
-        return sen_logits, doc_logits
-
-    def create_model(self, inputs):
-        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-
-        outputs_sen = self.add_cnn_layer(inputs)
-        outputs_sen_dim = self.filter_num * len(self.filter_list)
-
-        # outputs_sen = self.add_bilstm_layer(inputs)
-        # outputs_sen_dim = 2 * self.config.n_hidden
-
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
-        mask = tf.sequence_mask([2], 3, tf.float32)
-        tmp = sen_logits * mask
-        alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
-        alpha_sen = softmax_with_len(alpha_sen, self.doc_len, self.config.max_doc_len)
-
-        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
-        outputs_doc = tf.squeeze(tf.matmul(alpha_sen, outputs_sen))
-
-        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
-        return sen_logits, logits
-
-    def add_loss(self, sen_scores, doc_scores):
-        sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=self.sen_y)
-        sen_loss = tf.reshape(sen_loss, [-1, self.config.max_doc_len])
-        sen_loss = reduce_mean_with_len(sen_loss, self.doc_len)
+    def add_loss(self, doc_scores):
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = tf.reduce_mean(doc_loss) + tf.reduce_mean(sen_loss) + sum(reg_loss)
-        return sen_loss, loss
+        loss = tf.reduce_mean(doc_loss) + sum(reg_loss)
+        return loss
 
     def add_accuracy(self, scores):
         correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.doc_y, 1))
@@ -168,23 +129,22 @@ class HN_DOC_WITH_SEN(object):
         accuracy = tf.reduce_mean(tf.cast(correct_predicts, tf.float32), name='accuracy')
         return accuracy, accuracy_num
 
-    def add_train_op(self, sen_loss, doc_loss):
+    def add_train_op(self, doc_loss):
         global_step = tf.Variable(0, name='global_step', trainable=False)
         self.lr = tf.train.exponential_decay(self.config.lr, global_step, self.config.decay_steps,
                                              self.config.decay_rate, staircase=True)
         optimizer = tf.train.AdamOptimizer(self.lr)
-        train_op1 = optimizer.minimize(sen_loss)
-        train_op2 = optimizer.minimize(doc_loss, global_step=global_step)
-        return train_op2
+        train_op = optimizer.minimize(doc_loss, global_step=global_step)
+        return train_op
 
     def run_op(self, sess, op, data_x, sen_len, doc_len, sen_y, doc_y=None):
         res_list = []
         len_list = []
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
             if doc_y is not None:
-                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], sen_y[indices], doc_y[indices])
+                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], doc_y[indices])
             else:
-                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], sen_y[indices])
+                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices])
             res = sess.run(op, feed_dict=feed_dict)
             res_list.append(res)
             len_list.append(len(indices))
@@ -202,8 +162,7 @@ class HN_DOC_WITH_SEN(object):
         total_num = []
         for step, indices in enumerate(batch_index(len(self.train_doc_y), self.config.batch_size, 1), 1):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
-                                              self.train_doc_len[indices], self.train_sen_y[indices],
-                                              self.train_doc_y[indices])
+                                              self.train_doc_len[indices], self.train_doc_y[indices])
             _, loss, acc_num, lr = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
@@ -218,9 +177,9 @@ class HN_DOC_WITH_SEN(object):
         return np.mean(total_loss), sum(total_acc_num) * 1.0 / sum(total_num)
 
 
-def test_case(sess, classifier, data_x, sen_len, doc_len, sen_y, doc_y):
-    loss = classifier.run_op(sess, classifier.doc_loss, data_x, sen_len, doc_len, sen_y, doc_y)
-    acc_num = classifier.run_op(sess, classifier.accuracy_num, data_x, sen_len, doc_len, sen_y, doc_y)
+def test_case(sess, classifier, data_x, sen_len, doc_len, doc_y):
+    loss = classifier.run_op(sess, classifier.doc_loss, data_x, sen_len, doc_len, doc_y)
+    acc_num = classifier.run_op(sess, classifier.accuracy_num, data_x, sen_len, doc_len, doc_y)
     return acc_num * 1.0 / len(doc_y), loss
 
 
@@ -238,14 +197,14 @@ def train_run(_):
             sess.run(tf.global_variables_initializer())
             best_accuracy = 0
             best_val_epoch = 0
-            val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y = \
-                classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_sen_y, classifier.val_doc_y
+            val_x, val_sen_len, val_doc_len, val_doc_y = \
+                classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_doc_y
             for epoch in range(classifier.config.n_iter):
                 print '=' * 20 + 'Epoch ', epoch, '=' * 20
                 loss, acc = classifier.run_epoch(sess)
                 print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
                 print '=' * 50
-                val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y)
+                val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_doc_y)
                 print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
                 if best_accuracy < val_accuracy:
                     best_accuracy = val_accuracy
