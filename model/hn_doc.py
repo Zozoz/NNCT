@@ -151,7 +151,7 @@ class HN_DOC_WITH_SEN(object):
         train_op = optimizer.minimize(doc_loss, global_step=global_step)
         return train_op
 
-    def run_op(self, sess, op, data_x, sen_len, doc_len, sen_y, doc_y=None):
+    def run_op(self, sess, op, data_x, sen_len, doc_len, doc_y=None):
         res_list = []
         len_list = []
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
