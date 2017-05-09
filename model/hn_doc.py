@@ -69,14 +69,14 @@ class HN_DOC_WITH_SEN(object):
             feed_list = [x_batch, sen_len_batch, doc_len_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
-    def add_bilstm_layer(self, inputs, seq_len, scope_name='1'):
+    def add_bilstm_layer(self, inputs, seq_len, max_len, scope_name='1'):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         cell = tf.contrib.rnn.LSTMCell
         seq_len = tf.reshape(seq_len, [-1])
-        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, seq_len, self.config.max_sentence_len, scope_name, 'all')
-        alpha_sen = mlp_attention_layer(hiddens_sen, seq_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
-        outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
-        return outputs_sen
+        hiddens = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, seq_len, max_len, scope_name, 'all')
+        alpha = mlp_attention_layer(hiddens, seq_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
+        outputs = tf.squeeze(tf.matmul(alpha, hiddens))
+        return outputs
 
     def add_cnn_layer(self, inputs, scope_name='1'):
         inputs = tf.expand_dims(inputs, -1)
@@ -96,16 +96,30 @@ class HN_DOC_WITH_SEN(object):
         hiddens_flat = tf.reshape(hiddens, [-1, self.filter_num * len(self.filter_list)])
         return hiddens_flat
 
+    # hierarchical attention network
+    def create_model(self, inputs):
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')
+        inputs = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
+        outputs_doc = self.add_bilstm_layer(inputs, self.doc_len, self.config.max_doc_len, 'doc')
+        return softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class)
+
     def create_model_1(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-        outputs_sen = self.add_cnn_layer(inputs)
-        outputs_sen_dim = self.filter_num * len(self.filter_list)
+
+        # outputs_sen = self.add_cnn_layer(inputs)
+        # outputs_sen_dim = self.filter_num * len(self.filter_list)
+
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')
+        outputs_sen_dim = 2 * self.config.n_hidden
+
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2,
                                self.config.l2_reg, self.config.n_class)
         return logits
 
+    # hierarchical network (word-sentence-document)
     def create_model_2(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
