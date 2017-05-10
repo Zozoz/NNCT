@@ -146,6 +146,6 @@ def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, sco
     )
     with tf.name_scope('softmax'):
         outputs = tf.nn.dropout(inputs, keep_prob=keep_prob)
-        scores = tf.nn.xw_plus_b(outputs, w, b, 'scores')
+        scores = tf.nn.softmax(tf.nn.xw_plus_b(outputs, w, b, 'scores'))
     return scores
 
