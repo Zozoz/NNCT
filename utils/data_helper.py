@@ -131,6 +131,7 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
 
     x, y, sen_len, doc_len, sen_y = [], [], [], [], []
     f1 = open(input_file)
+    c1, c2, c3 = 0, 0, 0
     for l1 in f1:
         l1 = l1.lower().decode('utf8', 'ignore').split('||')
         # y.append(line[0])
@@ -154,10 +155,13 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
             if j > 0:
                 t_sen_len[i] = j
                 if '<pos>' in sentence:
+                    c1 += 1
                     t_sen_y[i] = [1, 0, 0]
                 elif '<neg>' in sentence:
+                    c2 += 1
                     t_sen_y[i] = [0, 1, 0]
                 else:
+                    c3 += 1
                     t_sen_y[i] = [0, 0, 1]
                 i += 1
                 flag = True
@@ -170,6 +174,7 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
             y.append(l1[0])
             sen_y.append(t_sen_y)
 
+    print c1, c2, c3
     y = change_y_to_onehot(y)
     # sen_y = change_y_to_onehot(sen_y)
     print 'load input {} done!'.format(input_file)
