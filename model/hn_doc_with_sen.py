@@ -172,9 +172,8 @@ class HN_DOC_WITH_SEN(object):
     def add_loss_sep(self, sen_scores, doc_scores):
         print 'I am ass_loss_sep.'
         sen_y = tf.reshape(self.sen_y, [-1, 3])
-        sen_len = tf.reshape(self.sen_len, [-1])
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
-        sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(sen_len), dtype=tf.float32)
+        sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(self.doc_len), dtype=tf.float32)
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         doc_loss = tf.reduce_mean(doc_loss)
         return sen_loss, doc_loss
