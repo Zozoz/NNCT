@@ -197,18 +197,21 @@ class HN_DOC_WITH_SEN(object):
         total_loss = []
         total_acc_num = []
         total_num = []
+        total_sen_loss = []
         for step, indices in enumerate(batch_index(len(self.train_doc_y), self.config.batch_size, 1), 1):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
-            _ = sess.run(self.train_op1, feed_dict=feed_dict)
+            _, loss1 = sess.run([self.train_op1, self.sen_loss], feed_dict=feed_dict)
             _, loss, acc_num, lr = sess.run([self.train_op2, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
             total_num.append(len(indices))
+            total_sen_loss.append(loss1)
             if verbose and step % verbose == 0:
-                print '\n[INFO] {} : loss = {}, acc = {}, lr = {}'.format(
+                print '\n[INFO] {} : sen loss = {}, doc loss = {}, acc = {}, lr = {}'.format(
                     step,
+                    np.mean(total_sen_loss[-verbose:]),
                     np.mean(total_loss[-verbose:]),
                     sum(total_acc_num[-verbose:]) * 1.0 / sum(total_num[-verbose:]),
                     lr
