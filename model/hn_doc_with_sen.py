@@ -26,9 +26,9 @@ class HN_DOC_WITH_SEN(object):
         self.sen_logits, self.doc_logits = self.create_model(inputs)
         self.predict_prob = tf.nn.softmax(self.doc_logits)
         self.load_data()
-        self.sen_loss, self.doc_loss = self.add_loss(self.sen_logits, self.doc_logits)
+        self.sen_loss, self.doc_loss = self.add_loss_sep(self.sen_logits, self.doc_logits)
         self.accuracy, self.accuracy_num = self.add_accuracy(self.doc_logits)
-        self.train_op = self.add_train_op(self.sen_loss, self.doc_loss)
+        self.train_op1, self.train_op2 = self.add_train_op(self.sen_loss, self.doc_loss)
 
     def add_placeholder(self):
         self.x = tf.placeholder(tf.int32, [None, self.config.max_doc_len, self.config.max_sentence_len])
@@ -149,8 +149,15 @@ class HN_DOC_WITH_SEN(object):
         sen_loss = reduce_mean_with_len(sen_loss, self.doc_len)
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = tf.reduce_mean(doc_loss) + tf.reduce_mean(sen_loss) + sum(reg_loss)
+        loss = tf.reduce_mean(doc_loss) # + tf.reduce_mean(sen_loss) + sum(reg_loss)
         return sen_loss, loss
+
+    def add_loss_sep(self, sen_scores, doc_scores):
+        sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=self.sen_y)
+        sen_loss = tf.reduce_sum(sen_loss) / tf.reduce_sum(self.sen_len)
+        doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
+        doc_loss = tf.reduce_mean(doc_loss)
+        return sen_loss, doc_loss
 
     def add_accuracy(self, scores):
         correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.doc_y, 1))
@@ -165,7 +172,7 @@ class HN_DOC_WITH_SEN(object):
         optimizer = tf.train.AdamOptimizer(self.lr)
         train_op1 = optimizer.minimize(sen_loss)
         train_op2 = optimizer.minimize(doc_loss, global_step=global_step)
-        return train_op2
+        return train_op1, train_op2
 
     def run_op(self, sess, op, data_x, sen_len, doc_len, sen_y, doc_y=None):
         res_list = []
@@ -194,7 +201,8 @@ class HN_DOC_WITH_SEN(object):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
-            _, loss, acc_num, lr = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
+            _ = sess.run(self.train_op1, feed_dict=feed_dict)
+            _, loss, acc_num, lr = sess.run([self.train_op2, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
             total_num.append(len(indices))
