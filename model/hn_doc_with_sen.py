@@ -222,7 +222,8 @@ class HN_DOC_WITH_SEN(object):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
-            _, loss1 = sess.run([self.train_op1, self.sen_loss], feed_dict=feed_dict)
+            _, loss1, sen_y = sess.run([self.train_op1, self.sen_loss, self.sen_logits], feed_dict=feed_dict)
+            print sen_y
             _, loss, acc_num, lr = sess.run([self.train_op2, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
