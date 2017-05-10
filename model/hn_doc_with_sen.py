@@ -161,7 +161,9 @@ class HN_DOC_WITH_SEN(object):
 
 
     def add_loss(self, sen_scores, doc_scores):
-        sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=self.sen_y)
+        print 'I am ass_loss.'
+        sen_y = tf.reshape(self.sen_y, [-1, 3])
+        sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
         sen_loss = tf.reshape(sen_loss, [-1, self.config.max_doc_len])
         sen_loss = reduce_mean_with_len(sen_loss, self.doc_len)
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
@@ -189,7 +191,7 @@ class HN_DOC_WITH_SEN(object):
         self.lr = tf.train.exponential_decay(self.config.lr, global_step, self.config.decay_steps,
                                              self.config.decay_rate, staircase=True)
         optimizer = tf.train.AdamOptimizer(self.lr)
-        train_op1 = optimizer.minimize(sen_loss)
+        train_op1 = optimizer.minimize(sen_loss, global_step=global_step)
         train_op2 = optimizer.minimize(doc_loss, global_step=global_step)
         return train_op1, train_op2
 

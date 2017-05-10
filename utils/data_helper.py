@@ -153,9 +153,9 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
                     break
             if j > 0:
                 t_sen_len[i] = j
-                if '<POS>' in sentence:
+                if '<pos>' in sentence:
                     t_sen_y[i] = [1, 0, 0]
-                elif '<NEG>' in sentence:
+                elif '<neg>' in sentence:
                     t_sen_y[i] = [0, 1, 0]
                 else:
                     t_sen_y[i] = [0, 0, 1]
