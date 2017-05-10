@@ -23,7 +23,7 @@ class HN_DOC_WITH_SEN(object):
 
         self.add_placeholder()
         inputs = self.add_embedding()
-        self.sen_logits, self.doc_logits = self.create_model(inputs)
+        self.sen_logits, self.doc_logits = self.create_model_2(inputs)
         self.predict_prob = tf.nn.softmax(self.doc_logits)
         self.load_data()
         self.sen_loss, self.doc_loss = self.add_loss_sep(self.sen_logits, self.doc_logits)
@@ -142,6 +142,23 @@ class HN_DOC_WITH_SEN(object):
 
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
         return sen_logits, logits
+
+    def create_model_2(self, inputs):
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
+
+        # outputs_sen = self.add_cnn_layer(inputs)
+        # outputs_sen_dim = self.filter_num * len(self.filter_list)
+
+        outputs_sen = self.add_bilstm_layer(inputs)
+        outputs_sen_dim = 2 * self.config.n_hidden
+
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
+        outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
+
+        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
+        return sen_logits, logits
+
 
     def add_loss(self, sen_scores, doc_scores):
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=self.sen_y)
