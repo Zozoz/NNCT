@@ -74,10 +74,9 @@ class HN_DOC_WITH_SEN(object):
         cell = tf.contrib.rnn.LSTMCell
         # word to sentence
         sen_len = tf.reshape(self.sen_len, [-1])
-        with tf.variable_scope(scope_name) as scope:
-            hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, scope_name, 'all')
-            alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
-            outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
+        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, scope_name, 'all')
+        alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name+'_l2_')
+        outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
         return outputs_sen
 
     def add_cnn_layer(self, inputs, scope_name='1'):
@@ -152,11 +151,11 @@ class HN_DOC_WITH_SEN(object):
         outputs_sen = self.add_bilstm_layer(inputs, 'doc_sen')
         outputs_sen_dim = 2 * self.config.n_hidden
 
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_l2_')
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
 
-        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
+        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_l2_')
         return sen_logits, logits
 
     def add_loss(self, sen_scores, doc_scores):
@@ -175,11 +174,11 @@ class HN_DOC_WITH_SEN(object):
         sen_y = tf.reshape(self.sen_y, [-1, 3])
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
         sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(self.doc_len), dtype=tf.float32)
-        self.sen_vars = [var for var in tf.global_variables() if 'sen' in var.name]
+        self.sen_vars = [var for var in tf.global_variables() if 'sen' in var.name and 'l2' in var.name]
         sen_loss += sum(self.sen_vars)
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         doc_loss = tf.reduce_mean(doc_loss)
-        self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name]
+        self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name and 'l2' in var.name]
         doc_loss += sum(self.doc_vars)
         return sen_loss, doc_loss
 
