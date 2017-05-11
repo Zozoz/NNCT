@@ -24,7 +24,6 @@ class HN_DOC_WITH_SEN(object):
         self.add_placeholder()
         inputs = self.add_embedding()
         self.doc_logits = self.create_model_1(inputs)
-        self.predict_prob = tf.nn.softmax(self.doc_logits)
         self.load_data()
         self.doc_loss = self.add_loss(self.doc_logits)
         self.accuracy, self.accuracy_num = self.add_accuracy(self.doc_logits)

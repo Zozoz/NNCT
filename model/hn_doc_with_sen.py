@@ -24,7 +24,6 @@ class HN_DOC_WITH_SEN(object):
         self.add_placeholder()
         inputs = self.add_embedding()
         self.sen_logits, self.doc_logits = self.create_model_2(inputs)
-        self.predict_prob = tf.nn.softmax(self.doc_logits)
         self.load_data()
         self.sen_loss, self.doc_loss = self.add_loss_sep(self.sen_logits, self.doc_logits)
         self.accuracy, self.accuracy_num = self.add_accuracy(self.doc_logits)
@@ -70,14 +69,15 @@ class HN_DOC_WITH_SEN(object):
             feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
-    def add_bilstm_layer(self, inputs, scope_name='1'):
+    def add_bilstm_layer(self, inputs, scope_name='bilstm'):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         cell = tf.contrib.rnn.LSTMCell
         # word to sentence
         sen_len = tf.reshape(self.sen_len, [-1])
-        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, scope_name, 'all')
-        alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
-        outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
+        with tf.variable_scope(scope_name) as scope:
+            hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, scope_name, 'all')
+            alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
+            outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
         return outputs_sen
 
     def add_cnn_layer(self, inputs, scope_name='1'):
@@ -149,7 +149,7 @@ class HN_DOC_WITH_SEN(object):
         # outputs_sen = self.add_cnn_layer(inputs)
         # outputs_sen_dim = self.filter_num * len(self.filter_list)
 
-        outputs_sen = self.add_bilstm_layer(inputs)
+        outputs_sen = self.add_bilstm_layer(inputs, 'doc_sen')
         outputs_sen_dim = 2 * self.config.n_hidden
 
         sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
@@ -158,7 +158,6 @@ class HN_DOC_WITH_SEN(object):
 
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
         return sen_logits, logits
-
 
     def add_loss(self, sen_scores, doc_scores):
         print 'I am ass_loss.'
@@ -176,8 +175,12 @@ class HN_DOC_WITH_SEN(object):
         sen_y = tf.reshape(self.sen_y, [-1, 3])
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
         sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(self.doc_len), dtype=tf.float32)
+        self.sen_vars = [var for var in tf.global_variables() if 'sen' in var.name]
+        sen_loss += sum(self.sen_vars)
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         doc_loss = tf.reduce_mean(doc_loss)
+        self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name]
+        doc_loss += sum(self.doc_vars)
         return sen_loss, doc_loss
 
     def add_accuracy(self, scores):
@@ -191,8 +194,8 @@ class HN_DOC_WITH_SEN(object):
         self.lr = tf.train.exponential_decay(self.config.lr, global_step, self.config.decay_steps,
                                              self.config.decay_rate, staircase=True)
         optimizer = tf.train.AdamOptimizer(self.lr)
-        train_op1 = optimizer.minimize(sen_loss, global_step=global_step)
-        train_op2 = optimizer.minimize(doc_loss, global_step=global_step)
+        train_op1 = optimizer.minimize(sen_loss, global_step=global_step, var_list=self.sen_vars)
+        train_op2 = optimizer.minimize(doc_loss, global_step=global_step, var_list=self.doc_vars)
         return train_op1, train_op2
 
     def run_op(self, sess, op, data_x, sen_len, doc_len, sen_y, doc_y=None):
