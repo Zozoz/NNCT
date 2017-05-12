@@ -103,7 +103,7 @@ class HN_DOC(object):
         outputs_dim = 2 * self.config.n_hidden
         outputs_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, tf.reshape(self.sen_len, [-1]), self.config.max_sentence_len, 'sen', 'last')
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_dim])
-        outputs_doc = bi_dynamic_rnn(cell, outputs_sen, outputs_dim, self.doc_len, self.config.max_doc_len, 'doc', 'last')
+        outputs_doc = bi_dynamic_rnn(cell, outputs_sen, self.config.n_hidden, self.doc_len, self.config.max_doc_len, 'doc', 'last')
         doc_logits = softmax_layer(outputs_doc, outputs_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
         return doc_logits
 
@@ -126,8 +126,8 @@ class HN_DOC(object):
     def create_model_2(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')
-        inputs = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
-        outputs_doc = self.add_bilstm_layer(inputs, self.doc_len, self.config.max_doc_len, 'doc')
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
+        outputs_doc = self.add_bilstm_layer(outputs_sen, self.doc_len, self.config.max_doc_len, 'doc')
         return softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class)
 
     def add_loss(self, doc_scores):
