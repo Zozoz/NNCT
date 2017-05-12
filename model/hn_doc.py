@@ -14,7 +14,7 @@ from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_l
 from newbie_nn.att_layer import mlp_attention_layer, softmax_with_len
 
 
-class HN_DOC_WITH_SEN(object):
+class HN_DOC(object):
 
     def __init__(self, filter_list=(3, 4, 5), filter_num=100):
         self.config = FLAGS
@@ -95,13 +95,17 @@ class HN_DOC_WITH_SEN(object):
         hiddens_flat = tf.reshape(hiddens, [-1, self.filter_num * len(self.filter_list)])
         return hiddens_flat
 
-    # hierarchical attention network
+    # hierarchical network (word-sentence-document)
     def create_model(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')
-        inputs = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
-        outputs_doc = self.add_bilstm_layer(inputs, self.doc_len, self.config.max_doc_len, 'doc')
-        return softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class)
+        inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
+        cell = tf.contrib.rnn.LSTMCell
+        outputs_dim = 2 * self.config.n_hidden
+        outputs_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, tf.reshape(self.sen_len, [-1]), self.config.max_sentence_len, 'sen', 'last')
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_dim])
+        outputs_doc = bi_dynamic_rnn(cell, outputs_sen, outputs_dim, self.doc_len, self.config.max_doc_len, 'doc', 'last')
+        doc_logits = softmax_layer(outputs_doc, outputs_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
+        return doc_logits
 
     def create_model_1(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
@@ -118,22 +122,18 @@ class HN_DOC_WITH_SEN(object):
                                self.config.l2_reg, self.config.n_class)
         return logits
 
-    # hierarchical network (word-sentence-document)
+    # hierarchical attention network
     def create_model_2(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-        inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
-        cell = tf.contrib.rnn.LSTMCell
-        outputs_dim = 2 * self.config.n_hidden
-        outputs_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, tf.reshape(self.sen_len, [-1]), self.config.max_sentence_len, 'sen', 'last')
-        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_dim])
-        outputs_doc = bi_dynamic_rnn(cell, outputs_sen, outputs_dim, self.doc_len, self.config.max_doc_len, 'doc', 'last')
-        doc_logits = softmax_layer(outputs_doc, outputs_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
-        return doc_logits
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')
+        inputs = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
+        outputs_doc = self.add_bilstm_layer(inputs, self.doc_len, self.config.max_doc_len, 'doc')
+        return softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class)
 
     def add_loss(self, doc_scores):
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = tf.reduce_mean(doc_loss) + sum(reg_loss)
+        loss = tf.reduce_mean(doc_loss) # + sum(reg_loss)
         return loss
 
     def add_accuracy(self, scores):
@@ -198,37 +198,36 @@ def test_case(sess, classifier, data_x, sen_len, doc_len, doc_y):
 
 def train_run(_):
     sys.stdout.write('Training start:\n')
-    with tf.Graph().as_default():
-        with tf.device('/gpu:0'):
-            classifier = HN_DOC_WITH_SEN()
-        saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
+    with tf.device('/gpu:0'):
+        classifier = HN_DOC()
+    saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
 
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        config.allow_soft_placement = True
-        with tf.Session(config=config) as sess:
-            sess.run(tf.global_variables_initializer())
-            best_accuracy = 0
-            best_val_epoch = 0
-            val_x, val_sen_len, val_doc_len, val_doc_y = \
-                classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_doc_y
-            for epoch in range(classifier.config.n_iter):
-                print '=' * 20 + 'Epoch ', epoch, '=' * 20
-                loss, acc = classifier.run_epoch(sess)
-                print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
-                print '=' * 50
-                val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_doc_y)
-                print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
-                if best_accuracy < val_accuracy:
-                    best_accuracy = val_accuracy
-                    best_val_epoch = epoch
-                    if not os.path.exists(classifier.config.weights_save_path):
-                        os.makedirs(classifier.config.weights_save_path)
-                    saver.save(sess, classifier.config.weights_save_path + '/weights')
-                if epoch - best_val_epoch > classifier.config.early_stopping:
-                    print 'Normal early stop!'
-                    break
-            print 'Best acc = {}'.format(best_accuracy)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+    with tf.Session(config=config) as sess:
+        sess.run(tf.global_variables_initializer())
+        best_accuracy = 0
+        best_val_epoch = 0
+        val_x, val_sen_len, val_doc_len, val_doc_y = \
+            classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_doc_y
+        for epoch in range(classifier.config.n_iter):
+            print '=' * 20 + 'Epoch ', epoch, '=' * 20
+            loss, acc = classifier.run_epoch(sess)
+            print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
+            print '=' * 50
+            val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_doc_y)
+            print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
+            if best_accuracy < val_accuracy:
+                best_accuracy = val_accuracy
+                best_val_epoch = epoch
+                if not os.path.exists(classifier.config.weights_save_path):
+                    os.makedirs(classifier.config.weights_save_path)
+                saver.save(sess, classifier.config.weights_save_path + '/weights')
+            if epoch - best_val_epoch > classifier.config.early_stopping:
+                print 'Normal early stop!'
+                break
+        print 'Best acc = {}'.format(best_accuracy)
     print 'Training complete!'
 
 
