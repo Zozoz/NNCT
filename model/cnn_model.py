@@ -161,37 +161,36 @@ def test_case(sess, classifier, data_x, data_len, data_y):
 
 def train_run(_):
     sys.stdout.write('Training start:\n')
-    with tf.Graph().as_default():
-        with tf.device('/gpu:0'):
-            classifier = CNN_Sentence([3, 4, 5], 100)
-        saver = tf.train.Saver()
+    with tf.device('/gpu:0'):
+        classifier = CNN_Sentence([3, 4, 5], 100)
+    saver = tf.train.Saver()
 
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        config.allow_soft_placement = True
-        with tf.Session(config=config) as sess:
-            sess.run(tf.global_variables_initializer())
-            best_accuracy = 0
-            best_val_epoch = 0
-            train_x, train_y, train_sen_len = classifier.train_x, classifier.train_y, classifier.train_sen_len
-            val_x, val_y, val_sen_len = classifier.val_x, classifier.val_y, classifier.val_sen_len
-            for epoch in range(classifier.config.n_iter):
-                print '=' * 20 + 'Epoch ', epoch, '=' * 20
-                loss, acc = classifier.run_epoch(sess, train_x, train_sen_len, train_y)
-                print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
-                print '=' * 50
-                val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_y)
-                print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
-                if best_accuracy < val_accuracy:
-                    best_accuracy = val_accuracy
-                    best_val_epoch = epoch
-                    if not os.path.exists(classifier.config.weights_save_path):
-                        os.makedirs(classifier.config.weights_save_path)
-                    saver.save(sess, classifier.config.weights_save_path + '/weights')
-                if epoch - best_val_epoch > classifier.config.early_stopping:
-                    print 'Normal early stop!'
-                    break
-            print 'Best acc = {}'.format(best_accuracy)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+    with tf.Session(config=config) as sess:
+        sess.run(tf.global_variables_initializer())
+        best_accuracy = 0
+        best_val_epoch = 0
+        train_x, train_y, train_sen_len = classifier.train_x, classifier.train_y, classifier.train_sen_len
+        val_x, val_y, val_sen_len = classifier.val_x, classifier.val_y, classifier.val_sen_len
+        for epoch in range(classifier.config.n_iter):
+            print '=' * 20 + 'Epoch ', epoch, '=' * 20
+            loss, acc = classifier.run_epoch(sess, train_x, train_sen_len, train_y)
+            print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
+            print '=' * 50
+            val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_y)
+            print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
+            if best_accuracy < val_accuracy:
+                best_accuracy = val_accuracy
+                best_val_epoch = epoch
+                if not os.path.exists(classifier.config.weights_save_path):
+                    os.makedirs(classifier.config.weights_save_path)
+                saver.save(sess, classifier.config.weights_save_path + '/weights')
+            if epoch - best_val_epoch > classifier.config.early_stopping:
+                print 'Normal early stop!'
+                break
+        print 'Best acc = {}'.format(best_accuracy)
     print 'Training complete!'
 
 
