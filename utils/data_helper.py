@@ -104,7 +104,7 @@ def load_inputs_document(input_file, word_id_file, max_sen_len, max_doc_len, _ty
                         j += 1
                 else:
                     break
-            if j > 0:
+            if j > 2:
                 t_sen_len[i] = j
                 i += 1
                 flag = True
@@ -152,7 +152,7 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
                         j += 1
                 else:
                     break
-            if j > 0:
+            if j > 2:
                 t_sen_len[i] = j
                 if '<pos>' in sentence:
                     c1 += 1
@@ -164,7 +164,6 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
                     c3 += 1
                     t_sen_y[i] = [0, 0, 1]
                 i += 1
-            if j > 2:
                 flag = True
             if i >= max_doc_len:
                 break
