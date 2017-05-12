@@ -148,14 +148,14 @@ class HN_DOC_WITH_SEN(object):
         # outputs_sen = self.add_cnn_layer(inputs)
         # outputs_sen_dim = self.filter_num * len(self.filter_list)
 
-        outputs_sen = self.add_bilstm_layer(inputs, 'doc_sen')
+        outputs_sen = self.add_bilstm_layer(inputs, 'sen')  # doc_sen
         outputs_sen_dim = 2 * self.config.n_hidden
 
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_l2_')
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
 
-        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_l2_')
+        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_softmax_')
         return sen_logits, logits
 
     def add_loss(self, sen_scores, doc_scores):
@@ -174,12 +174,18 @@ class HN_DOC_WITH_SEN(object):
         sen_y = tf.reshape(self.sen_y, [-1, 3])
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
         sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(self.doc_len), dtype=tf.float32)
-        self.sen_vars = [var for var in tf.global_variables() if 'sen' in var.name and 'l2' in var.name]
-        sen_loss += sum(self.sen_vars)
+        self.sen_vars = [var for var in tf.global_variables() if 'sen' in var.name]
+        self.sen_reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='sen_softmax')
+        print self.sen_vars
+        print self.sen_reg_loss
+        # sen_loss = sen_loss + self.sen_reg_loss
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         doc_loss = tf.reduce_mean(doc_loss)
-        self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name and 'l2' in var.name]
-        doc_loss += sum(self.doc_vars)
+        self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name]
+        self.doc_reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='doc_softmax')
+        print self.doc_vars
+        print self.doc_reg_loss
+        # doc_loss = doc_loss + self.doc_reg_loss
         return sen_loss, doc_loss
 
     def add_accuracy(self, scores):
@@ -251,37 +257,36 @@ def test_case(sess, classifier, data_x, sen_len, doc_len, sen_y, doc_y):
 
 def train_run(_):
     sys.stdout.write('Training start:\n')
-    with tf.Graph().as_default():
-        with tf.device('/gpu:0'):
-            classifier = HN_DOC_WITH_SEN()
-        saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
+    with tf.device('/gpu:0'):
+        classifier = HN_DOC_WITH_SEN()
+    saver = tf.train.Saver()
 
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        config.allow_soft_placement = True
-        with tf.Session(config=config) as sess:
-            sess.run(tf.global_variables_initializer())
-            best_accuracy = 0
-            best_val_epoch = 0
-            val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y = \
-                classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_sen_y, classifier.val_doc_y
-            for epoch in range(classifier.config.n_iter):
-                print '=' * 20 + 'Epoch ', epoch, '=' * 20
-                loss, acc = classifier.run_epoch(sess)
-                print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
-                print '=' * 50
-                val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y)
-                print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
-                if best_accuracy < val_accuracy:
-                    best_accuracy = val_accuracy
-                    best_val_epoch = epoch
-                    if not os.path.exists(classifier.config.weights_save_path):
-                        os.makedirs(classifier.config.weights_save_path)
-                    saver.save(sess, classifier.config.weights_save_path + '/weights')
-                if epoch - best_val_epoch > classifier.config.early_stopping:
-                    print 'Normal early stop!'
-                    break
-            print 'Best acc = {}'.format(best_accuracy)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.allow_soft_placement = True
+    with tf.Session(config=config) as sess:
+        sess.run(tf.global_variables_initializer())
+        best_accuracy = 0
+        best_val_epoch = 0
+        val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y = \
+            classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_sen_y, classifier.val_doc_y
+        for epoch in range(classifier.config.n_iter):
+            print '=' * 20 + 'Epoch ', epoch, '=' * 20
+            loss, acc = classifier.run_epoch(sess)
+            print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
+            print '=' * 50
+            val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y)
+            print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
+            if best_accuracy < val_accuracy:
+                best_accuracy = val_accuracy
+                best_val_epoch = epoch
+                if not os.path.exists(classifier.config.weights_save_path):
+                    os.makedirs(classifier.config.weights_save_path)
+                saver.save(sess, classifier.config.weights_save_path + '/weights')
+            if epoch - best_val_epoch > classifier.config.early_stopping:
+                print 'Normal early stop!'
+                break
+        print 'Best acc = {}'.format(best_accuracy)
     print 'Training complete!'
 
 
