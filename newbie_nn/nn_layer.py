@@ -129,21 +129,22 @@ def reduce_mean_with_len(inputs, length):
 
 
 def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, scope_name='1'):
-    w = tf.get_variable(
-        name='softmax_w_' + scope_name,
-        shape=[n_hidden, n_class],
-        initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_class))),
-        # initializer=tf.random_uniform_initializer(-random_base, random_base),
-        # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_class)), np.sqrt(6.0 / (n_hidden + n_class))),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
-    b = tf.get_variable(
-        name='softmax_b_' + scope_name,
-        shape=[n_class],
-        initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_class))),
-        # initializer=tf.random_uniform_initializer(-random_base, random_base),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
+    with tf.variable_scope(scope_name):
+        w = tf.get_variable(
+            name='softmax_w',
+            shape=[n_hidden, n_class],
+            initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_class))),
+            # initializer=tf.random_uniform_initializer(-random_base, random_base),
+            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_class)), np.sqrt(6.0 / (n_hidden + n_class))),
+            regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
+        )
+        b = tf.get_variable(
+            name='softmax_b',
+            shape=[n_class],
+            initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_class))),
+            # initializer=tf.random_uniform_initializer(-random_base, random_base),
+            regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
+        )
     with tf.name_scope('softmax'):
         outputs = tf.nn.dropout(inputs, keep_prob=keep_prob)
         scores = tf.nn.xw_plus_b(outputs, w, b, 'scores')

@@ -70,13 +70,13 @@ class HN_DOC_WITH_SEN(object):
             feed_list = [x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
-    def add_bilstm_layer(self, inputs, scope_name='bilstm'):
+    def add_bilstm_layer(self, inputs, seq_len, scope_name='bilstm'):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         cell = tf.contrib.rnn.LSTMCell
         # word to sentence
-        sen_len = tf.reshape(self.sen_len, [-1])
-        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, sen_len, self.config.max_sentence_len, scope_name, 'all')
-        alpha_sen = mlp_attention_layer(hiddens_sen, sen_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name+'_l2_')
+        seq_len = tf.reshape(seq_len, [-1])
+        hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, seq_len, self.config.max_sentence_len, scope_name, 'all')
+        alpha_sen = mlp_attention_layer(hiddens_sen, seq_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name+'_l2_')
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
         return outputs_sen
 
@@ -104,7 +104,7 @@ class HN_DOC_WITH_SEN(object):
         # outputs_sen = self.add_cnn_layer(inputs, 'sen')
         # outputs_sen_dim = self.filter_num * len(self.filter_list)
 
-        outputs_sen = self.add_bilstm_layer(inputs, 'sen')
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, 'sen')
         outputs_sen_dim = 2 * self.config.n_hidden
 
         sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
@@ -128,7 +128,7 @@ class HN_DOC_WITH_SEN(object):
         # outputs_sen = self.add_cnn_layer(inputs)
         # outputs_sen_dim = self.filter_num * len(self.filter_list)
 
-        outputs_sen = self.add_bilstm_layer(inputs)
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len)
         outputs_sen_dim = 2 * self.config.n_hidden
 
         sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
@@ -149,7 +149,7 @@ class HN_DOC_WITH_SEN(object):
         # outputs_sen = self.add_cnn_layer(inputs)
         # outputs_sen_dim = self.filter_num * len(self.filter_list)
 
-        outputs_sen = self.add_bilstm_layer(inputs, 'sen')  # doc_sen
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, 'sen')  # doc_sen
         outputs_sen_dim = 2 * self.config.n_hidden
 
         sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
@@ -161,12 +161,12 @@ class HN_DOC_WITH_SEN(object):
 
     def create_model_3(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-        outputs_sen = self.add_bilstm_layer(inputs, 'sen')  # doc_sen
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, 'sen')  # doc_sen
         outputs_sen_dim = 2 * self.config.n_hidden
         sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
 
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
-        outputs_doc = self.add_bilstm_layer(outputs_sen, 'doc')
+        outputs_doc = self.add_bilstm_layer(outputs_sen, self.doc_len, 'doc')
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_softmax_')
         return sen_logits, logits
 
