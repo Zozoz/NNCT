@@ -196,7 +196,7 @@ class HN_DOC_WITH_SEN(object):
         return accuracy, accuracy_num
 
     def add_sen_acc(self, scores):
-        correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.sen_y, 1))
+        correct_predicts = tf.cast(tf.equal(tf.argmax(scores, 1), tf.argmax(self.sen_y, 1)), tf.int32)
         mask = tf.reshape(tf.sequence_mask(self.doc_len, self.config.max_doc_len, dtype=tf.int32), [-1])
         acc_num = tf.reduce_sum(correct_predicts * mask)
         sen_num = tf.reduce_sum(self.doc_len)
