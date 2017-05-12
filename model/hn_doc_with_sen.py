@@ -23,7 +23,7 @@ class HN_DOC_WITH_SEN(object):
 
         self.add_placeholder()
         inputs = self.add_embedding()
-        self.sen_logits, self.doc_logits = self.create_model_2(inputs)
+        self.sen_logits, self.doc_logits = self.create_model_3(inputs)
         self.load_data()
         self.sen_loss, self.doc_loss = self.add_loss_sep(self.sen_logits, self.doc_logits)
         self.accuracy, self.accuracy_num = self.add_accuracy(self.doc_logits)
@@ -156,6 +156,17 @@ class HN_DOC_WITH_SEN(object):
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
 
+        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_softmax_')
+        return sen_logits, logits
+
+    def create_model_3(self, inputs):
+        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
+        outputs_sen = self.add_bilstm_layer(inputs, 'sen')  # doc_sen
+        outputs_sen_dim = 2 * self.config.n_hidden
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
+
+        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
+        outputs_doc = self.add_bilstm_layer(outputs_sen, 'doc')
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_softmax_')
         return sen_logits, logits
 
