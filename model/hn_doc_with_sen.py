@@ -27,6 +27,7 @@ class HN_DOC_WITH_SEN(object):
         self.load_data()
         self.sen_loss, self.doc_loss = self.add_loss_sep(self.sen_logits, self.doc_logits)
         self.accuracy, self.accuracy_num = self.add_accuracy(self.doc_logits)
+        self.sen_acc_num, self.sen_num = self.add_sen_acc(self.sen_logits)
         self.train_op1, self.train_op2 = self.add_train_op(self.sen_loss, self.doc_loss)
 
     def add_placeholder(self):
@@ -194,6 +195,13 @@ class HN_DOC_WITH_SEN(object):
         accuracy = tf.reduce_mean(tf.cast(correct_predicts, tf.float32), name='accuracy')
         return accuracy, accuracy_num
 
+    def add_sen_acc(self, scores):
+        correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.sen_y, 1))
+        mask = tf.reshape(tf.sequence_mask(self.doc_len, self.config.max_doc_len, dtype=tf.int32), [-1])
+        acc_num = tf.reduce_sum(correct_predicts * mask)
+        sen_num = tf.reduce_sum(self.doc_len)
+        return acc_num, sen_num
+
     def add_train_op(self, sen_loss, doc_loss):
         global_step = tf.Variable(0, name='global_step', trainable=False)
         self.lr = tf.train.exponential_decay(self.config.lr, global_step, self.config.decay_steps,
@@ -227,21 +235,26 @@ class HN_DOC_WITH_SEN(object):
         total_acc_num = []
         total_num = []
         total_sen_loss = []
+        total_sen_acc_num = []
+        total_sen_num = []
         for step, indices in enumerate(batch_index(len(self.train_doc_y), self.config.batch_size, 1), 1):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
                                               self.train_doc_len[indices], self.train_sen_y[indices],
                                               self.train_doc_y[indices])
-            _, loss1, sen_y = sess.run([self.train_op1, self.sen_loss, self.sen_logits], feed_dict=feed_dict)
-            print sen_y
+            _, loss1, sen_y, sen_acc_num, sen_num = sess.run([self.train_op1, self.sen_loss, self.sen_logits, self.sen_acc_num, self.sen_num], feed_dict=feed_dict)
+            # print sen_y
             _, loss, acc_num, lr = sess.run([self.train_op2, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
             total_num.append(len(indices))
             total_sen_loss.append(loss1)
+            total_sen_acc_num.append(sen_acc_num)
+            total_sen_num.append(sen_num)
             if verbose and step % verbose == 0:
-                print '\n[INFO] {} : sen loss = {}, doc loss = {}, acc = {}, lr = {}'.format(
+                print '\n[INFO] {} : sen loss = {}, sen acc = {}, doc loss = {}, doc acc = {}, lr = {}'.format(
                     step,
                     np.mean(total_sen_loss[-verbose:]),
+                    sum(total_sen_acc_num[-verbose:]) * 1.0 / sum(total_sen_num[-verbose:]),
                     np.mean(total_loss[-verbose:]),
                     sum(total_acc_num[-verbose:]) * 1.0 / sum(total_num[-verbose:]),
                     lr
