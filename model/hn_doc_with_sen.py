@@ -98,58 +98,14 @@ class HN_DOC_WITH_SEN(object):
         hiddens_flat = tf.reshape(hiddens, [-1, self.filter_num * len(self.filter_list)])
         return hiddens_flat
 
+    # 映射一层, 组合两层
     def create_model_1(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
 
-        # outputs_sen = self.add_cnn_layer(inputs, 'sen')
-        # outputs_sen_dim = self.filter_num * len(self.filter_list)
-
-        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, 'sen')
-        outputs_sen_dim = 2 * self.config.n_hidden
-
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
-        mask = tf.sequence_mask([2], 3, tf.float32)
-        tmp = sen_logits * mask
-        alpha_doc = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
-        alpha_doc = softmax_with_len(alpha_doc, self.doc_len, self.config.max_doc_len)
-        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
-
-        outputs_doc = bi_dynamic_rnn(tf.contrib.rnn.LSTMCell, outputs_sen, self.config.n_hidden, self.doc_len,
-                                     self.config.max_doc_len, 'doc', 'all')
-        outputs_doc = tf.squeeze(tf.matmul(alpha_doc, outputs_doc))
-
-        doc_logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 5, 'doc')
-
-        return sen_logits, doc_logits
-
-    def create_model(self, inputs):
-        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-
         # outputs_sen = self.add_cnn_layer(inputs)
         # outputs_sen_dim = self.filter_num * len(self.filter_list)
 
-        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len)
-        outputs_sen_dim = 2 * self.config.n_hidden
-
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen')
-        mask = tf.sequence_mask([2], 3, tf.float32)
-        tmp = sen_logits * mask
-        alpha_sen = tf.reshape(tf.reduce_max(tmp, -1), [-1, 1, self.config.max_doc_len])
-        alpha_sen = softmax_with_len(alpha_sen, self.doc_len, self.config.max_doc_len)
-
-        outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
-        outputs_doc = tf.squeeze(tf.matmul(alpha_sen, outputs_sen))
-
-        logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc')
-        return sen_logits, logits
-
-    def create_model_2(self, inputs):
-        inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-
-        # outputs_sen = self.add_cnn_layer(inputs)
-        # outputs_sen_dim = self.filter_num * len(self.filter_list)
-
-        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, 'sen')  # doc_sen
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, 'doc_sen')  # doc_sen
         outputs_sen_dim = 2 * self.config.n_hidden
 
         sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
@@ -159,7 +115,8 @@ class HN_DOC_WITH_SEN(object):
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_softmax_')
         return sen_logits, logits
 
-    def create_model_3(self, inputs):
+    # 映射两层, 组合两层
+    def create_model_2(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, 'sen')  # doc_sen
         outputs_sen_dim = 2 * self.config.n_hidden
@@ -170,17 +127,23 @@ class HN_DOC_WITH_SEN(object):
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_softmax_')
         return sen_logits, logits
 
+    # 一体化
     def add_loss(self, sen_scores, doc_scores):
         print 'I am ass_loss.'
         sen_y = tf.reshape(self.sen_y, [-1, 3])
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
-        sen_loss = tf.reshape(sen_loss, [-1, self.config.max_doc_len])
-        sen_loss = reduce_mean_with_len(sen_loss, self.doc_len)
+        sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(self.doc_len), dtype=tf.float32)
+
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
-        reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = tf.reduce_mean(doc_loss) # + tf.reduce_mean(sen_loss) + sum(reg_loss)
+        doc_loss = tf.reduce_mean(doc_loss)
+
+        reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='sen_softmax') +\
+            tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='doc_softmax')
+
+        loss = doc_loss + sen_loss + sum(reg_loss)
         return sen_loss, loss
 
+    # 两步走
     def add_loss_sep(self, sen_scores, doc_scores):
         print 'I am ass_loss_sep.'
         sen_y = tf.reshape(self.sen_y, [-1, 3])
@@ -200,12 +163,14 @@ class HN_DOC_WITH_SEN(object):
         # doc_loss = doc_loss + self.doc_reg_loss
         return sen_loss, doc_loss
 
+    # document accuracy
     def add_accuracy(self, scores):
         correct_predicts = tf.equal(tf.argmax(scores, 1), tf.argmax(self.doc_y, 1))
         accuracy_num = tf.reduce_sum(tf.cast(correct_predicts, tf.int32))
         accuracy = tf.reduce_mean(tf.cast(correct_predicts, tf.float32), name='accuracy')
         return accuracy, accuracy_num
 
+    # sentence accuracy
     def add_sen_acc(self, scores):
         correct_predicts = tf.cast(tf.equal(tf.argmax(scores, 1), tf.argmax(tf.reshape(self.sen_y, [-1, 3]), 1)), tf.int32)
         mask = tf.reshape(tf.sequence_mask(self.doc_len, self.config.max_doc_len, dtype=tf.int32), [-1])
