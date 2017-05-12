@@ -164,6 +164,7 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
                     c3 += 1
                     t_sen_y[i] = [0, 0, 1]
                 i += 1
+            if j > 2:
                 flag = True
             if i >= max_doc_len:
                 break
