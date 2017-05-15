@@ -68,7 +68,7 @@ class HN_DOC(object):
             feed_list = [x_batch, sen_len_batch, doc_len_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
         return dict(zip(holder_list, feed_list))
 
-    def add_bilstm_layer(self, inputs, seq_len, max_len, scope_name='1'):
+    def add_bilstm_layer(self, inputs, seq_len, max_len, scope_name='bilstm'):
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         cell = tf.contrib.rnn.LSTMCell
         seq_len = tf.reshape(seq_len, [-1])
@@ -77,7 +77,7 @@ class HN_DOC(object):
         outputs = tf.squeeze(tf.matmul(alpha, hiddens))
         return outputs
 
-    def add_cnn_layer(self, inputs, scope_name='1'):
+    def add_cnn_layer(self, inputs, scope_name='cnn'):
         inputs = tf.expand_dims(inputs, -1)
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         pooling_outputs = []
@@ -110,7 +110,7 @@ class HN_DOC(object):
     def create_model_1(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
 
-        # outputs_sen = self.add_cnn_layer(inputs)
+        # outputs_sen = self.add_cnn_layer(inputs, 'sen')
         # outputs_sen_dim = self.filter_num * len(self.filter_list)
 
         outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')
@@ -132,8 +132,8 @@ class HN_DOC(object):
 
     def add_loss(self, doc_scores):
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
-        reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = tf.reduce_mean(doc_loss) # + sum(reg_loss)
+        reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='softmax')
+        loss = tf.reduce_mean(doc_loss) + sum(reg_loss)
         return loss
 
     def add_accuracy(self, scores):

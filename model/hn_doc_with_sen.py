@@ -76,11 +76,11 @@ class HN_DOC_WITH_SEN(object):
         # word to sentence
         seq_len = tf.reshape(seq_len, [-1])
         hiddens_sen = bi_dynamic_rnn(cell, inputs, self.config.n_hidden, seq_len, self.config.max_sentence_len, scope_name, 'all')
-        alpha_sen = mlp_attention_layer(hiddens_sen, seq_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name+'_l2_')
+        alpha_sen = mlp_attention_layer(hiddens_sen, seq_len, 2 * self.config.n_hidden, self.config.l2_reg, self.config.random_base, scope_name)
         outputs_sen = tf.squeeze(tf.matmul(alpha_sen, hiddens_sen))
         return outputs_sen
 
-    def add_cnn_layer(self, inputs, scope_name='1'):
+    def add_cnn_layer(self, inputs, scope_name='conv'):
         inputs = tf.expand_dims(inputs, -1)
         inputs = tf.nn.dropout(inputs, keep_prob=self.keep_prob1)
         pooling_outputs = []
@@ -136,6 +136,8 @@ class HN_DOC_WITH_SEN(object):
 
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
         doc_loss = tf.reduce_mean(doc_loss)
+
+        self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name or 'sen' in var.name]
 
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='sen_softmax') +\
             tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='doc_softmax')

@@ -8,21 +8,22 @@ import numpy as np
 import tensorflow as tf
 
 
-def cnn_layer(inputs, filter_shape, strides, padding, random_base, l2_reg, active_func=None, scope_name="1"):
-    w = tf.get_variable(
-        name='conv_w_' + scope_name,
-        shape=filter_shape,
-        # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
-        initializer=tf.random_uniform_initializer(-random_base, random_base),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
-    b = tf.get_variable(
-        name='conv_b_' + scope_name,
-        shape=[filter_shape[-1]],
-        # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
-        initializer=tf.random_uniform_initializer(-random_base, random_base),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
+def cnn_layer(inputs, filter_shape, strides, padding, random_base, l2_reg, active_func=None, scope_name="cnn"):
+    with tf.variable_scope(scope_name):
+        w = tf.get_variable(
+            name='conv_w',
+            shape=filter_shape,
+            # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
+            initializer=tf.random_uniform_initializer(-random_base, random_base),
+            regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
+        )
+        b = tf.get_variable(
+            name='conv_b',
+            shape=[filter_shape[-1]],
+            # initializer=tf.random_normal_initializer(mean=0., stddev=1.0),
+            initializer=tf.random_uniform_initializer(-random_base, random_base),
+            regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
+        )
     conv = tf.nn.conv2d(inputs, w, strides, padding)
     h = tf.nn.bias_add(conv, b)
     if active_func is None:
@@ -128,21 +129,21 @@ def reduce_mean_with_len(inputs, length):
     return inputs
 
 
-def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, scope_name='1'):
+def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, scope_name='softmax'):
     with tf.variable_scope(scope_name):
         w = tf.get_variable(
             name='softmax_w',
             shape=[n_hidden, n_class],
-            initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_class))),
-            # initializer=tf.random_uniform_initializer(-random_base, random_base),
+            # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_class))),
+            initializer=tf.random_uniform_initializer(-random_base, random_base),
             # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_class)), np.sqrt(6.0 / (n_hidden + n_class))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
         b = tf.get_variable(
             name='softmax_b',
             shape=[n_class],
-            initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_class))),
-            # initializer=tf.random_uniform_initializer(-random_base, random_base),
+            # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_class))),
+            initializer=tf.random_uniform_initializer(-random_base, random_base),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
     with tf.name_scope('softmax'):
