@@ -34,7 +34,6 @@ def bilinear_attention_layer(inputs, attend, length, n_hidden, l2_reg, random_ba
             shape=[n_hidden, n_hidden],
             # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_hidden))),
             initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_hidden)), np.sqrt(6.0 / (n_hidden + n_hidden))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
     inputs = tf.reshape(inputs, [-1, n_hidden])
@@ -60,7 +59,6 @@ def dot_produce_attention_layer(inputs, length, n_hidden, l2_reg, random_base, s
             shape=[n_hidden, 1],
             # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + 1))),
             initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + 1)), np.sqrt(6.0 / (n_hidden + 1))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
     inputs = tf.reshape(inputs, [-1, n_hidden])
@@ -83,7 +81,6 @@ def mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, scope_nam
             shape=[n_hidden, n_hidden],
             # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_hidden))),
             initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_hidden)), np.sqrt(6.0 / (n_hidden + n_hidden))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
         b = tf.get_variable(
@@ -98,7 +95,6 @@ def mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, scope_nam
             shape=[n_hidden, 1],
             # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + 1))),
             initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + 1)), np.sqrt(6.0 / (n_hidden + 1))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
     inputs = tf.reshape(inputs, [-1, n_hidden])
@@ -122,7 +118,6 @@ def Mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, scope_nam
             shape=[n_hidden, n_hidden],
             # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_hidden))),
             initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_hidden)), np.sqrt(6.0 / (n_hidden + n_hidden))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
         u = tf.get_variable(
@@ -130,7 +125,6 @@ def Mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, scope_nam
             shape=[n_hidden, 1],
             # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + 1))),
             initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + 1)), np.sqrt(6.0 / (n_hidden + 1))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
     inputs = tf.transpose(tf.reshape(inputs, [-1, n_hidden]), [1, 0])

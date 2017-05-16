@@ -38,7 +38,7 @@ class CNN_Sentence(object):
 
     def add_embedding(self):
         if self.config.pre_trained == 'yes':
-            self.word2id, w2v = load_w2v(self.config.embedding_file, self.config.embedding_dim, True)
+            self.word2id, w2v = load_w2v(self.config.embedding_file, self.config.embedding_dim, False)
         else:
             self.word2id = load_word2id(self.config.word2id_file)
             self.vocab_size = len(self.word2id) + 1

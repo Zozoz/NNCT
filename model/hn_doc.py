@@ -39,7 +39,7 @@ class HN_DOC(object):
 
     def add_embedding(self):
         if self.config.pre_trained == 'yes':
-            self.word2id, w2v = load_w2v(self.config.embedding_file, self.config.embedding_dim, True)
+            self.word2id, w2v = load_w2v(self.config.embedding_file, self.config.embedding_dim, False)
         else:
             self.word2id = load_word2id(self.config.word2id_file)
             self.vocab_size = len(self.word2id) + 1
@@ -215,6 +215,9 @@ def train_run(_):
             print '=' * 20 + 'Epoch ', epoch, '=' * 20
             loss, acc = classifier.run_epoch(sess)
             print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
+            if not loss:
+                print '[Error] loss is not a number!'
+                break
             print '=' * 50
             val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_doc_y)
             print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)

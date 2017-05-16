@@ -8,6 +8,28 @@ import numpy as np
 import tensorflow as tf
 
 
+def mlp_layer(inputs, layer_sizes, keep_probs, random_base, l2_reg, active_func=None, scope_name='mlp'):
+    weight_matrix = zip(layer_sizes, layer_sizes[1:])
+    with tf.variable_scope(scope_name):
+        cnt = 0
+        for n_in, n_out in weight_matrix[:-1]:
+            w = tf.get_variable(
+                name='mlp_w_' + str(cnt),
+                shape=[n_in, n_out],
+                initializer=tf.random_uniform_initializer(-random_base, random_base),
+                regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
+            )
+            b = tf.get_variable(
+                name='mlp_b_' + str(cnt),
+                shape=[n_out],
+                initializer=tf.random_uniform_initializer(-random_base, random_base),
+                regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
+            )
+            inputs = tf.nn.dropout(inputs, keep_prob=keep_probs[cnt])
+            inputs = active_func(tf.nn.xw_plus_b(inputs, w, b))
+    return inputs
+
+
 def cnn_layer(inputs, filter_shape, strides, padding, random_base, l2_reg, active_func=None, scope_name="cnn"):
     with tf.variable_scope(scope_name):
         w = tf.get_variable(
@@ -136,7 +158,6 @@ def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, sco
             shape=[n_hidden, n_class],
             # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_class))),
             initializer=tf.random_uniform_initializer(-random_base, random_base),
-            # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_class)), np.sqrt(6.0 / (n_hidden + n_class))),
             regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
         )
         b = tf.get_variable(
