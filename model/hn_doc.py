@@ -119,7 +119,7 @@ class HN_DOC(object):
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
         logits = softmax_layer(outputs_doc, outputs_sen_dim, self.config.random_base, self.keep_prob2,
-                               self.config.l2_reg, self.config.n_class)
+                               self.config.l2_reg, self.config.n_class, 'doc_softmax')
         return logits
 
     # hierarchical attention network
@@ -132,7 +132,10 @@ class HN_DOC(object):
 
     def add_loss(self, doc_scores):
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
-        reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='softmax')
+        self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name or 'sen' in var.name]
+        print self.doc_vars
+        reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='doc_softmax')
+        print reg_loss
         loss = tf.reduce_mean(doc_loss) + sum(reg_loss)
         return loss
 
@@ -147,7 +150,7 @@ class HN_DOC(object):
         self.lr = tf.train.exponential_decay(self.config.lr, global_step, self.config.decay_steps,
                                              self.config.decay_rate, staircase=True)
         optimizer = tf.train.AdamOptimizer(self.lr)
-        train_op = optimizer.minimize(doc_loss, global_step=global_step)
+        train_op = optimizer.minimize(doc_loss, global_step=global_step, var_list=self.doc_vars)
         return train_op
 
     def run_op(self, sess, op, data_x, sen_len, doc_len, doc_y=None):
@@ -215,7 +218,7 @@ def train_run(_):
             print '=' * 20 + 'Epoch ', epoch, '=' * 20
             loss, acc = classifier.run_epoch(sess)
             print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
-            if not loss:
+            if np.isnan(loss):
                 print '[Error] loss is not a number!'
                 break
             print '=' * 50

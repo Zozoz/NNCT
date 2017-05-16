@@ -138,9 +138,11 @@ class HN_DOC_WITH_SEN(object):
         doc_loss = tf.reduce_mean(doc_loss)
 
         self.doc_vars = [var for var in tf.global_variables() if 'doc' in var.name or 'sen' in var.name]
+        print self.doc_vars
 
         reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='sen_softmax') +\
             tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES, scope='doc_softmax')
+        print reg_loss
 
         loss = doc_loss + sen_loss + sum(reg_loss)
         return sen_loss, loss
@@ -265,7 +267,7 @@ def train_run(_):
             print '=' * 20 + 'Epoch ', epoch, '=' * 20
             loss, acc = classifier.run_epoch(sess)
             print '[INFO] Mean loss = {}, mean acc = {}'.format(loss, acc)
-            if not loss:
+            if np.isnan(loss):
                 print '[Error] loss is not a number!'
                 break
             print '=' * 50
