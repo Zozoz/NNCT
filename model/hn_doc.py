@@ -128,7 +128,8 @@ class HN_DOC(object):
         outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, 2 * self.config.n_hidden])
         outputs_doc = self.add_bilstm_layer(outputs_sen, self.doc_len, self.config.max_doc_len, 'doc')
-        return softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_class)
+        return softmax_layer(outputs_doc, 2 * self.config.n_hidden, self.config.random_base,
+                             self.keep_prob2, self.config.l2_reg, self.config.n_class, 'doc_softmax')
 
     def add_loss(self, doc_scores):
         doc_loss = tf.nn.softmax_cross_entropy_with_logits(logits=doc_scores, labels=self.doc_y)
@@ -229,7 +230,7 @@ def train_run(_):
                 best_val_epoch = epoch
                 if not os.path.exists(classifier.config.weights_save_path):
                     os.makedirs(classifier.config.weights_save_path)
-                saver.save(sess, classifier.config.weights_save_path + '/weights')
+                # saver.save(sess, classifier.config.weights_save_path + '/weights')
             if epoch - best_val_epoch > classifier.config.early_stopping:
                 print 'Normal early stop!'
                 break

@@ -278,7 +278,7 @@ def train_run(_):
                 best_val_epoch = epoch
                 if not os.path.exists(classifier.config.weights_save_path):
                     os.makedirs(classifier.config.weights_save_path)
-                saver.save(sess, classifier.config.weights_save_path + '/weights')
+                # saver.save(sess, classifier.config.weights_save_path + '/weights')
             if epoch - best_val_epoch > classifier.config.early_stopping:
                 print 'Normal early stop!'
                 break
