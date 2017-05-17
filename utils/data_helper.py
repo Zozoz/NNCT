@@ -44,12 +44,12 @@ def load_w2v(w2v_file, embedding_dim, is_skip=False):
     w2v.append([0.] * embedding_dim)
     cnt = 0
     for line in fp:
-        cnt += 1
         # line = line.decode('utf8').split()
         line = line.split()
         if len(line) != embedding_dim + 1:
             print u'a bad word embedding: {}'.format(line[0])
             continue
+        cnt += 1
         w2v.append([float(v) for v in line[1:]])
         word_dict[line[0]] = cnt
     w2v = np.asarray(w2v, dtype=np.float32)
