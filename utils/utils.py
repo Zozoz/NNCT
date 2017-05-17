@@ -14,10 +14,13 @@ def count_doc_sentence_for_doc(f, sep='<sssss>'):
     word_num = []
     for line in open(f):
         sentences = line.split('<sssss>')
-        sen_num.append(len(sentences))
+        cnt = 0
         for sentence in sentences:
             words = sentence.split()
-            word_num.append(len(words))
+            if len(words) > 4:
+                cnt += 1
+                word_num.append(len(words))
+        sen_num.append(cnt)
     print 'document number is ', len(sen_num)
     print 'average sentence number of document is ', sum(sen_num) * 1.0 / len(sen_num)
     print 'sentence number is ', len(word_num)
