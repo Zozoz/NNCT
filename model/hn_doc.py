@@ -59,13 +59,13 @@ class HN_DOC(object):
         self.val_x, self.val_sen_len, self.val_doc_len, self.val_doc_y = load_inputs_document(
             self.config.val_file, self.word2id, self.config.max_sentence_len, self.config.max_doc_len)
 
-    def create_feed_dict(self, x_batch, sen_len_batch, doc_len_batch, y_batch=None):
+    def create_feed_dict(self, x_batch, sen_len_batch, doc_len_batch, y_batch=None, kp1=1.0, kp2=1.0):
         if y_batch is None:
-            holder_list = [self.x, self.sen_len, self.doc_len]
-            feed_list = [x_batch, sen_len_batch, doc_len_batch]
+            holder_list = [self.x, self.sen_len, self.doc_len, self.keep_prob1, self.keep_prob2]
+            feed_list = [x_batch, sen_len_batch, doc_len_batch, kp1, kp2]
         else:
             holder_list = [self.x, self.sen_len, self.doc_len, self.doc_y, self.keep_prob1, self.keep_prob2]
-            feed_list = [x_batch, sen_len_batch, doc_len_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
+            feed_list = [x_batch, sen_len_batch, doc_len_batch, y_batch, kp1, kp2]
         return dict(zip(holder_list, feed_list))
 
     def add_bilstm_layer(self, inputs, seq_len, max_len, scope_name='bilstm'):
@@ -154,14 +154,14 @@ class HN_DOC(object):
         train_op = optimizer.minimize(doc_loss, global_step=global_step, var_list=self.doc_vars)
         return train_op
 
-    def run_op(self, sess, op, data_x, sen_len, doc_len, doc_y=None):
+    def run_op(self, sess, op, data_x, sen_len, doc_len, doc_y=None, kp1=1.0, kp2=1.0):
         res_list = []
         len_list = []
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
             if doc_y is not None:
-                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], doc_y[indices])
+                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], doc_y[indices], kp1, kp2)
             else:
-                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices])
+                feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], None, kp1, kp2)
             res = sess.run(op, feed_dict=feed_dict)
             res_list.append(res)
             len_list.append(len(indices))
@@ -179,7 +179,8 @@ class HN_DOC(object):
         total_num = []
         for step, indices in enumerate(batch_index(len(self.train_doc_y), self.config.batch_size, 1), 1):
             feed_dict = self.create_feed_dict(self.train_x[indices], self.train_sen_len[indices],
-                                              self.train_doc_len[indices], self.train_doc_y[indices])
+                                              self.train_doc_len[indices], self.train_doc_y[indices],
+                                              self.config.keep_prob1, self.config.keep_prob2)
             _, loss, acc_num, lr = sess.run([self.train_op, self.doc_loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)

@@ -58,13 +58,13 @@ class CNN_Sentence(object):
         self.val_x, self.val_sen_len, self.val_y = load_inputs_sentence(self.config.val_file, self.word2id,
                                                                         self.config.max_sentence_len)
 
-    def create_feed_dict(self, x_batch, sen_len_batch, y_batch=None):
+    def create_feed_dict(self, x_batch, sen_len_batch, y_batch=None, kp1=1.0, kp2=1.0):
         if y_batch is None:
-            holder_list = [self.x, self.sen_len]
-            feed_list = [x_batch, sen_len_batch]
+            holder_list = [self.x, self.sen_len, self.keep_prob1, self.keep_prob2]
+            feed_list = [x_batch, sen_len_batch, kp1, kp2]
         else:
             holder_list = [self.x, self.sen_len, self.y, self.keep_prob1, self.keep_prob2]
-            feed_list = [x_batch, sen_len_batch, y_batch, self.config.keep_prob1, self.config.keep_prob2]
+            feed_list = [x_batch, sen_len_batch, y_batch, kp1, kp2]
         return dict(zip(holder_list, feed_list))
 
     def add_cnn_layer(self, inputs):
@@ -114,14 +114,14 @@ class CNN_Sentence(object):
         train_op = optimizer.minimize(loss, global_step=global_step)
         return train_op
 
-    def run_op(self, sess, op, data_x, data_len, data_y=None):
+    def run_op(self, sess, op, data_x, data_len, data_y=None, kp1=1.0, kp2=1.0):
         res_list = []
         len_list = []
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
             if data_y is not None:
-                feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], data_y[indices])
+                feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], data_y[indices], kp1, kp2)
             else:
-                feed_dict = self.create_feed_dict(data_x[indices], data_len[indices])
+                feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], None, kp1, kp2)
             res = sess.run(op, feed_dict=feed_dict)
             res_list.append(res)
             len_list.append(len(indices))
@@ -138,7 +138,8 @@ class CNN_Sentence(object):
         total_acc_num = []
         total_num = []
         for step, indices in enumerate(batch_index(len(data_y), self.config.batch_size, 1)):
-            feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], data_y[indices])
+            feed_dict = self.create_feed_dict(data_x[indices], data_len[indices], data_y[indices],
+                                              self.config.keep_prob1, self.config.keep_prob2)
             _, loss, acc_num, lr = sess.run([self.train_op, self.loss, self.accuracy_num, self.lr], feed_dict=feed_dict)
             total_loss.append(loss)
             total_acc_num.append(acc_num)
