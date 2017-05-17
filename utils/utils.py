@@ -9,6 +9,21 @@ import numpy as np
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 
+def count_doc_sentence_for_doc(f, sep='<sssss>'):
+    sen_num = []
+    word_num = []
+    for line in open(f):
+        sentences = line.split('<sssss>')
+        sen_num.append(len(sentences))
+        for sentence in sentences:
+            words = sentence.split()
+            word_num.append(len(words))
+    print 'document number is ', len(sen_num)
+    print 'average sentence number of document is ', sum(sen_num) * 1.0 / len(sen_num)
+    print 'sentence number is ', len(word_num)
+    print 'average word number of sentence is ', sum(word_num) * 1.0 / len(word_num)
+
+
 def calculate_metrics(pred_prob, data_y):
     p = precision_score(np.argmax(data_y, 1), np.argmax(pred_prob, 1), average=None)
     r = recall_score(np.argmax(data_y, 1), np.argmax(pred_prob, 1), average=None)
