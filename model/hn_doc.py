@@ -151,7 +151,9 @@ class HN_DOC(object):
         self.lr = tf.train.exponential_decay(self.config.lr, global_step, self.config.decay_steps,
                                              self.config.decay_rate, staircase=True)
         optimizer = tf.train.AdamOptimizer(self.lr)
-        train_op = optimizer.minimize(doc_loss, global_step=global_step, var_list=self.doc_vars)
+        grads, global_norm = tf.clip_by_global_norm(tf.gradients(doc_loss, self.doc_vars), 5.0)
+        train_op = optimizer.apply_gradients(zip(grads, self.doc_vars), name='train_op', global_step=global_step)
+        # train_op = optimizer.minimize(doc_loss, global_step=global_step, var_list=self.doc_vars)
         return train_op
 
     def run_op(self, sess, op, data_x, sen_len, doc_len, doc_y=None, kp1=1.0, kp2=1.0):
@@ -205,7 +207,7 @@ def train_run(_):
     sys.stdout.write('Training start:\n')
     with tf.device('/gpu:0'):
         classifier = HN_DOC()
-    saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
+    saver = tf.train.Saver(tf.global_variables())
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -231,7 +233,7 @@ def train_run(_):
                 best_val_epoch = epoch
                 if not os.path.exists(classifier.config.weights_save_path):
                     os.makedirs(classifier.config.weights_save_path)
-                # saver.save(sess, classifier.config.weights_save_path + '/weights')
+                saver.save(sess, classifier.config.weights_save_path + '/weights')
             if epoch - best_val_epoch > classifier.config.early_stopping:
                 print 'Normal early stop!'
                 break
