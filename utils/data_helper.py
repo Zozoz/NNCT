@@ -196,7 +196,7 @@ def load_inputs_document_sen_2(input_file, word_id_file, max_sen_len, max_doc_le
         # y.append(line[0])
 
         t_sen_len = [0] * max_doc_len
-        t_sen_y = [[0, 0, 0]] * max_doc_len
+        t_sen_y = [[0, 0]] * max_doc_len
         t_x = np.zeros((max_doc_len, max_sen_len))
         doc = ' '.join(l1[1:])
         sentences = doc.split('<sssss>')
@@ -253,6 +253,8 @@ def load_inputs_sentence(input_file, word_id_file, sentence_len, encoding='utf8'
         y.append(line[0])
 
         words = ' '.join(line[1:]).split()
+        if '<pos>' not in words and '<neg>' not in words:
+            continue
         xx = []
         i = 0
         for word in words:
