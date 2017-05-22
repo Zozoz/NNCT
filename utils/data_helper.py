@@ -97,7 +97,10 @@ def load_inputs_document(input_file, word_id_file, max_sen_len, max_doc_len, _ty
         flag = False
         for sentence in sentences:
             j = 0
-            for word in sentence.split():
+            words = sentence.split()
+            if '<pos>' not in words and '<neg>' not in words:
+                continue
+            for word in words:
                 if j < max_sen_len:
                     if word in word_to_id:
                         t_x[i, j] = word_to_id[word]
@@ -253,8 +256,6 @@ def load_inputs_sentence(input_file, word_id_file, sentence_len, encoding='utf8'
         y.append(line[0])
 
         words = ' '.join(line[1:]).split()
-        if '<pos>' not in words and '<neg>' not in words:
-            continue
         xx = []
         i = 0
         for word in words:
