@@ -63,32 +63,18 @@ def rule_based_sentiment_analysis(sentence, sentiment_lex):
     return polarity
 
 
-def cal_sen_sen_in_doc(doc_file, lex_file, doc_sentiment_file):
-    # load sentiment lexicon
+def load_lex(lex_file):
     lex_dict = dict()
     for line in open(lex_file):
         k, v = line.split()
         lex_dict[k] = float(v)
     print 'loading sentiment lexicon done!'
-    # calculate sentences sentiment in doc
-    sf = open(doc_file)
-    df = open(doc_sentiment_file, 'w')
-    for line in sf:
-        sentences = line.split('||')[-1].split('<sssss>')
-        polarity = []
-        for sentence in sentences:
-            polarity.append(str(rule_based_sentiment_analysis(sentence, lex_dict)))
-        df.write(' '.join(polarity) + '\n')
-    print 'calculating done!'
+    return lex_dict
 
 
 def add_sen_sen_in_doc(doc_file, lex_file, doc_file_new):
     # load sentiment lexicon
-    lex_dict = dict()
-    for line in open(lex_file):
-        k, v = line.split()
-        lex_dict[k] = float(v)
-    print 'loading sentiment lexicon done!'
+    lex_dict = load_lex(lex_file)
     sf = open(doc_file)
     df = open(doc_file_new, 'w')
     for line in sf:
@@ -103,7 +89,7 @@ def add_sen_sen_in_doc(doc_file, lex_file, doc_file_new):
             elif p < 0:
                 sent = '<NEG> ' + sent + ' </NEG>' + ' <sssss> '
             else:
-                sent = sent + ' <sssss> '
+                sent += ' <sssss> '
             df.write(sent)
         df.write('\n')
 
