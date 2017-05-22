@@ -35,7 +35,7 @@ class HN_DOC_WITH_SEN(object):
         self.doc_y = tf.placeholder(tf.float32, [None, self.config.n_class])
         self.sen_len = tf.placeholder(tf.int32, [None, self.config.max_doc_len])
         self.doc_len = tf.placeholder(tf.int32, [None])
-        self.sen_y = tf.placeholder(tf.float32, [None, self.config.max_doc_len, 3])
+        self.sen_y = tf.placeholder(tf.float32, [None, self.config.max_doc_len, self.config.n_sen_class])
         self.keep_prob1 = tf.placeholder(tf.float32)
         self.keep_prob2 = tf.placeholder(tf.float32)
 
@@ -108,7 +108,7 @@ class HN_DOC_WITH_SEN(object):
         outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'doc_sen')  # doc_sen / sen
         outputs_sen_dim = 2 * self.config.n_hidden
 
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_sen_class, 'sen_softmax_')
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = reduce_mean_with_len(outputs_sen, self.doc_len)
 
@@ -120,7 +120,7 @@ class HN_DOC_WITH_SEN(object):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
         outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'doc_sen')  # doc_sen / sen
         outputs_sen_dim = 2 * self.config.n_hidden
-        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
+        sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, self.config.n_sen_class, 'sen_softmax_')
 
         outputs_sen = tf.reshape(outputs_sen, [-1, self.config.max_doc_len, outputs_sen_dim])
         outputs_doc = self.add_bilstm_layer(outputs_sen, self.doc_len, self.config.max_doc_len, 'doc')
@@ -130,7 +130,7 @@ class HN_DOC_WITH_SEN(object):
     # 一体化
     def add_loss(self, sen_scores, doc_scores):
         print 'I am ass_loss.'
-        sen_y = tf.reshape(self.sen_y, [-1, 3])
+        sen_y = tf.reshape(self.sen_y, [-1, self.config.n_sen_class])
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
         sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(self.doc_len), dtype=tf.float32)
 
@@ -150,7 +150,7 @@ class HN_DOC_WITH_SEN(object):
     # 两步走
     def add_loss_sep(self, sen_scores, doc_scores):
         print 'I am ass_loss_sep.'
-        sen_y = tf.reshape(self.sen_y, [-1, 3])
+        sen_y = tf.reshape(self.sen_y, [-1, self.config.n_sen_class])
         sen_loss = tf.nn.softmax_cross_entropy_with_logits(logits=sen_scores, labels=sen_y)
         sen_loss = tf.reduce_sum(sen_loss) / tf.cast(tf.reduce_sum(self.doc_len), dtype=tf.float32)
         self.sen_vars = [var for var in tf.global_variables() if 'sen' in var.name]
@@ -176,7 +176,7 @@ class HN_DOC_WITH_SEN(object):
 
     # sentence accuracy
     def add_sen_acc(self, scores):
-        correct_predicts = tf.cast(tf.equal(tf.argmax(scores, 1), tf.argmax(tf.reshape(self.sen_y, [-1, 3]), 1)), tf.int32)
+        correct_predicts = tf.cast(tf.equal(tf.argmax(scores, 1), tf.argmax(tf.reshape(self.sen_y, [-1, self.config.n_sen_class]), 1)), tf.int32)
         mask = tf.reshape(tf.sequence_mask(self.doc_len, self.config.max_doc_len, dtype=tf.int32), [-1])
         acc_num = tf.reduce_sum(correct_predicts * mask)
         sen_num = tf.reduce_sum(self.doc_len)
