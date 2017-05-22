@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 import numpy as np
 
 from utils.config import *
-from utils.data_helper import load_w2v, load_inputs_document_sen, load_word2id, batch_index
+from utils.data_helper import load_w2v, load_inputs_document_sen_3, load_inputs_document_sen_2, load_word2id, batch_index
 from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len, cnn_layer
 from newbie_nn.att_layer import mlp_attention_layer, softmax_with_len
 
@@ -54,11 +54,11 @@ class HN_DOC_WITH_SEN(object):
         return inputs
 
     def load_data(self):
-        self.train_x, self.train_sen_len, self.train_doc_len, self.train_sen_y, self.train_doc_y = load_inputs_document_sen(
+        self.train_x, self.train_sen_len, self.train_doc_len, self.train_sen_y, self.train_doc_y = load_inputs_document_sen_3(
             self.config.train_file, self.word2id, self.config.max_sentence_len, self.config.max_doc_len)
-        self.test_x, self.test_sen_len, self.test_doc_len, self.test_sen_y, self.test_doc_y = load_inputs_document_sen(
+        self.test_x, self.test_sen_len, self.test_doc_len, self.test_sen_y, self.test_doc_y = load_inputs_document_sen_3(
             self.config.test_file, self.word2id, self.config.max_sentence_len, self.config.max_doc_len)
-        self.val_x, self.val_sen_len, self.val_doc_len, self.val_sen_y, self.val_doc_y = load_inputs_document_sen(
+        self.val_x, self.val_sen_len, self.val_doc_len, self.val_sen_y, self.val_doc_y = load_inputs_document_sen_3(
             self.config.val_file, self.word2id, self.config.max_sentence_len, self.config.max_doc_len)
 
     def create_feed_dict(self, x_batch, sen_len_batch, doc_len_batch, sen_y_batch, y_batch=None, kp1=1.0, kp2=1.0):
@@ -118,7 +118,7 @@ class HN_DOC_WITH_SEN(object):
     # 映射两层, 组合两层
     def create_model_2(self, inputs):
         inputs = tf.reshape(inputs, [-1, self.config.max_sentence_len, self.config.embedding_dim])
-        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'sen')  # doc_sen / sen
+        outputs_sen = self.add_bilstm_layer(inputs, self.sen_len, self.config.max_sentence_len, 'doc_sen')  # doc_sen / sen
         outputs_sen_dim = 2 * self.config.n_hidden
         sen_logits = softmax_layer(outputs_sen, outputs_sen_dim, self.config.random_base, self.keep_prob2, self.config.l2_reg, 3, 'sen_softmax_')
 

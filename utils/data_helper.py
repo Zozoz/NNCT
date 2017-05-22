@@ -122,7 +122,7 @@ def load_inputs_document(input_file, word_id_file, max_sen_len, max_doc_len, _ty
     return np.asarray(x), np.asarray(sen_len), np.asarray(doc_len), np.asarray(y)
 
 
-def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
+def load_inputs_document_sen_3(input_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
     if type(word_id_file) is str:
         word_to_id = load_word2id(word_id_file)
     else:
@@ -181,6 +181,64 @@ def load_inputs_document_sen(input_file, word_id_file, max_sen_len, max_doc_len,
 
     return np.asarray(x), np.asarray(sen_len), np.asarray(doc_len), np.asarray(sen_y), np.asarray(y)
 
+def load_inputs_document_sen_2(input_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
+    if type(word_id_file) is str:
+        word_to_id = load_word2id(word_id_file)
+    else:
+        word_to_id = word_id_file
+    print 'load word-to-id done!'
+
+    x, y, sen_len, doc_len, sen_y = [], [], [], [], []
+    f1 = open(input_file)
+    c1, c2, c3 = 0, 0, 0
+    for l1 in f1:
+        l1 = l1.lower().decode('utf8', 'ignore').split('||')
+        # y.append(line[0])
+
+        t_sen_len = [0] * max_doc_len
+        t_sen_y = [[0, 0, 0]] * max_doc_len
+        t_x = np.zeros((max_doc_len, max_sen_len))
+        doc = ' '.join(l1[1:])
+        sentences = doc.split('<sssss>')
+        i = 0
+        flag = False
+        for sentence in sentences:
+            j = 0
+            for word in sentence.split():
+                if j < max_sen_len:
+                    if word in word_to_id:
+                        t_x[i, j] = word_to_id[word]
+                        j += 1
+                else:
+                    break
+            if j > 2:
+                t_sen_len[i] = j
+                if '<pos>' in sentence:
+                    c1 += 1
+                    t_sen_y[i] = [1, 0]
+                elif '<neg>' in sentence:
+                    c2 += 1
+                    t_sen_y[i] = [1, 0]
+                else:
+                    c3 += 1
+                    t_sen_y[i] = [0, 1]
+                i += 1
+                flag = True
+            if i >= max_doc_len:
+                break
+        if flag:
+            doc_len.append(i)
+            sen_len.append(t_sen_len)
+            x.append(t_x)
+            y.append(l1[0])
+            sen_y.append(t_sen_y)
+
+    print c1, c2, c3
+    y = change_y_to_onehot(y)
+    # sen_y = change_y_to_onehot(sen_y)
+    print 'load input {} done!'.format(input_file)
+
+    return np.asarray(x), np.asarray(sen_len), np.asarray(doc_len), np.asarray(sen_y), np.asarray(y)
 
 def load_inputs_sentence(input_file, word_id_file, sentence_len, encoding='utf8'):
     if type(word_id_file) is str:
