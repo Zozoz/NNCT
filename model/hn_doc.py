@@ -218,6 +218,8 @@ def train_run(_):
         best_val_epoch = 0
         val_x, val_sen_len, val_doc_len, val_doc_y = \
             classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_doc_y
+        test_x, test_sen_len, test_doc_len, test_doc_y = \
+            classifier.test_x, classifier.test_sen_len, classifier.test_doc_len, classifier.test_doc_y
         for epoch in range(classifier.config.n_iter):
             print '=' * 20 + 'Epoch ', epoch, '=' * 20
             loss, acc = classifier.run_epoch(sess)
@@ -226,8 +228,10 @@ def train_run(_):
                 print '[Error] loss is not a number!'
                 break
             print '=' * 50
-            val_accuracy, loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_doc_y)
-            print '[INFO] test loss: {}, test acc: {}'.format(loss, val_accuracy)
+            val_accuracy, val_loss = test_case(sess, classifier, val_x, val_sen_len, val_doc_len, val_doc_y)
+            print '[INFO] val loss: {}, val acc: {}'.format(val_loss, val_accuracy)
+            test_accuracy, test_loss = test_case(sess, classifier, test_x, test_sen_len, test_doc_len, test_doc_y)
+            print '[INFO] test loss: {}, test acc: {}'.format(test_loss, test_accuracy)
             if best_accuracy < val_accuracy:
                 best_accuracy = val_accuracy
                 best_val_epoch = epoch
