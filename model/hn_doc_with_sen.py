@@ -261,6 +261,7 @@ def train_run(_):
         sess.run(tf.global_variables_initializer())
         best_accuracy = 0
         best_val_epoch = 0
+        best_test_acc = 0
         val_x, val_sen_len, val_doc_len, val_sen_y, val_doc_y = \
             classifier.val_x, classifier.val_sen_len, classifier.val_doc_len, classifier.val_sen_y, classifier.val_doc_y
         test_x, test_sen_len, test_doc_len, test_sen_y, test_doc_y = \
@@ -280,13 +281,15 @@ def train_run(_):
             if best_accuracy < val_accuracy:
                 best_accuracy = val_accuracy
                 best_val_epoch = epoch
+                best_test_acc = test_accuracy
                 if not os.path.exists(classifier.config.weights_save_path):
                     os.makedirs(classifier.config.weights_save_path)
                 # saver.save(sess, classifier.config.weights_save_path + '/weights')
             if epoch - best_val_epoch > classifier.config.early_stopping:
                 print 'Normal early stop!'
                 break
-        print 'Best acc = {}'.format(best_accuracy)
+        print 'Best val acc = {}'.format(best_accuracy)
+        print 'Test acc = {}'.format(best_test_acc)
     print 'Training complete!'
 
 
