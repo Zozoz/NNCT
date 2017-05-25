@@ -159,23 +159,22 @@ class HN_DOC(object):
     def run_op(self, sess, op, data_x, sen_len, doc_len, doc_y=None, kp1=1.0, kp2=1.0):
         res_list = []
         len_list = []
-        res = None
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
             if doc_y is not None:
                 feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], doc_y[indices], kp1, kp2)
             else:
                 feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], None, kp1, kp2)
             res = sess.run(op, feed_dict=feed_dict)
-            res_list.append(res)
+            res_list.append(res.tolist())
             len_list.append(len(indices))
         if type(res_list[0]) is list:
             res = np.concatenate(res_list, axis=1)
         elif op is self.accuracy_num:
             res = sum(res_list)
-        elif op is self.accuracy:
-            res = sum(res_list) * 1.0 / len(len_list)
+        elif op is self.doc_logits:
+            res = np.asarray(res_list)
         else:
-            res = np.concatenate(res_list)
+            res = sum(res_list) * 1.0 / len(len_list)
         return res
 
     def run_epoch(self, sess, verbose=10):
