@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 import numpy as np
 
 from utils.config import *
-from utils.data_helper import load_w2v, load_inputs_document, load_word2id, batch_index
+from utils.data_helper import load_w2v, load_inputs_document, load_word2id, batch_index, load_y2id_id2y
 from newbie_nn.nn_layer import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len, cnn_layer
 from newbie_nn.att_layer import mlp_attention_layer, softmax_with_len
 
@@ -159,6 +159,7 @@ class HN_DOC(object):
     def run_op(self, sess, op, data_x, sen_len, doc_len, doc_y=None, kp1=1.0, kp2=1.0):
         res_list = []
         len_list = []
+        res = None
         for indices in batch_index(len(data_x), self.config.batch_size, 1, False, False):
             if doc_y is not None:
                 feed_dict = self.create_feed_dict(data_x[indices], sen_len[indices], doc_len[indices], doc_y[indices], kp1, kp2)
@@ -168,11 +169,13 @@ class HN_DOC(object):
             res_list.append(res)
             len_list.append(len(indices))
         if type(res_list[0]) is list:
-            res = np.concatenate(res_list, axis=0)
+            res = np.concatenate(res_list, axis=1)
         elif op is self.accuracy_num:
             res = sum(res_list)
-        else:
+        elif op is self.accuracy:
             res = sum(res_list) * 1.0 / len(len_list)
+        else:
+            res = np.concatenate(res_list)
         return res
 
     def run_epoch(self, sess, verbose=10):
@@ -208,6 +211,7 @@ def train_run(_):
     with tf.device('/gpu:0'):
         classifier = HN_DOC()
     saver = tf.train.Saver(tf.global_variables())
+    save_path = classifier.config.weights_save_path + '/weights'
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -239,13 +243,28 @@ def train_run(_):
                 best_test_acc = test_accuracy
                 if not os.path.exists(classifier.config.weights_save_path):
                     os.makedirs(classifier.config.weights_save_path)
-                saver.save(sess, classifier.config.weights_save_path + '/weights')
+                saver.save(sess, save_path=save_path)
             if epoch - best_val_epoch > classifier.config.early_stopping:
                 print 'Normal early stop!'
                 break
         print 'Best val acc = {}'.format(best_accuracy)
         print 'Test acc = {}'.format(best_test_acc)
+
+        saver.restore(sess, save_path)
+        print 'Model restored from %s' % save_path
+        run_test(sess, classifier, test_x, test_sen_len, test_doc_len)
+
     print 'Training complete!'
+
+
+def run_test(sess, classifier, data_x, sen_len, doc_len, doc_y=None):
+    score = classifier.run_op(sess, classifier.doc_logits, data_x, sen_len, doc_len, doc_y)
+    py = np.argmax(score, axis=1)
+    _, id2y = load_y2id_id2y('data/y2id.txt')
+    fp = open('prediction_label.txt', 'w')
+    for id in py:
+        fp.write(id2y[id] + '\n')
+    print 'Testing complete!'
 
 
 if __name__ == '__main__':

@@ -69,12 +69,25 @@ def change_y_to_onehot(y):
     n_class = len(class_set)
     y_onehot_mapping = dict(zip(class_set, range(n_class)))
     print y_onehot_mapping
+    fp = open('data/y2id.txt', 'w')
+    for k, v in y_onehot_mapping.items():
+        fp.write(str(k) + ' ' + str(v) + '\n')
     onehot = []
     for label in y:
         tmp = [0] * n_class
         tmp[y_onehot_mapping[label]] = 1
         onehot.append(tmp)
     return np.asarray(onehot, dtype=np.int32)
+
+
+def load_y2id_id2y(f):
+    y2id = dict()
+    id2y = dict()
+    for line in open(f):
+        y, id = line.split()
+        y2id[y] = int(id)
+        id2y[int(id)] = y
+    return y2id, id2y
 
 
 def load_inputs_document(input_file, word_id_file, max_sen_len, max_doc_len, _type=None, encoding='utf8'):
@@ -98,8 +111,8 @@ def load_inputs_document(input_file, word_id_file, max_sen_len, max_doc_len, _ty
         for sentence in sentences:
             j = 0
             words = sentence.split()
-            if '<pos>' not in words and '<neg>' not in words:
-                continue
+            # if '<pos>' not in words and '<neg>' not in words:
+            #     continue
             for word in words:
                 if j < max_sen_len:
                     if word in word_to_id:
